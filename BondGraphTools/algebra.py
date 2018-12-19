@@ -6,6 +6,8 @@ This module contains methods for performing symbolic model reduction.
 import logging
 import sympy
 
+from sympy import Symbol, NumberSymbol, Number
+
 from .exceptions import SymbolicException
 
 logger = logging.getLogger(__name__)
@@ -17,6 +19,62 @@ __all__ = [
     "smith_normal_form",
     "augmented_rref"
 ]
+
+
+class Parameter(Symbol, NumberSymbol):
+    is_finite = True
+    is_zero = False
+    def __new__(cls, name, value=None, **assumptions):
+
+        obj = Symbol.__new__(cls, name, **assumptions)
+        try:
+            obj.__value = Number(value)
+        except ValueError:
+            obj.__value = None
+        return obj
+
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        return (other == self) and (other.value == self.value)
+
+    @property
+    def value(self):
+        return self.__value
+
+    @value.setter
+    def value(self, v):
+        self.__value = Number(v)
+
+    def evalf(self, *args, **kwargs):
+        return self.__value.evalf(*args, **kwargs)
+
+    def n(self):
+        self.__value.n()
+
+
+class Variable(Symbol):
+    order = 5
+
+class Derivative(Symbol):
+    order = 2
+
+class Effort(Symbol):
+    order = 3
+
+class Flow(Symbol):
+    order = 4
+
+class Control(Symbol):
+    order = 6
+
+class Output(Symbol):
+    order = 1
+
+
+
+
 
 def extract_coefficients(equation: sympy.Expr,
                          local_map: dict,

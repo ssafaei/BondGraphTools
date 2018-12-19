@@ -15,7 +15,7 @@ class Component(BondGraphBase, PortManager):
     """
 
     def __init__(self, metamodel, constitutive_relations,
-                 state_vars=None, params=None, **kwargs):
+                 state_vars=None, params=None, output_vars=None, **kwargs):
 
         self._metamodel = metamodel
         ports = kwargs.pop("ports")
@@ -24,6 +24,7 @@ class Component(BondGraphBase, PortManager):
         self._state_vars = state_vars
 
         self._params = params
+        self._output_vars = output_vars
 
         self.view = Glyph(self)
         self._constitutive_relations = constitutive_relations
@@ -38,6 +39,10 @@ class Component(BondGraphBase, PortManager):
     @property
     def metamodel(self):
         return self._metamodel
+
+    @property
+    def output_vars(self):
+        return list(self._output_vars.keys()) if self._output_vars else []
 
     @property
     def control_vars(self):

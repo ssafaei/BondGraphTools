@@ -11,35 +11,31 @@ logger = logging.getLogger(__name__)
 
 
 class BondGraphBase:
-    """
-    Base class definition for all bond graphs.
-
-    Attributes:
-        parent:
-        name:
-        metamodel:
-        template:
-        uri:
-        root:
-        basis_vectors:
-
-    Args:
-        name: Assumed to be unique
-        parent:
-        metadata (dict):
-    """
-
     def __init__(self,
                  name=None,
                  parent=None,
                  metamodel=None,
                  **kwargs):
+
+        """
+        Base class definition for all bond graphs.
+
+
+        Args:
+            name: Assumed to be unique
+            parent:
+            metadata (dict):
+        """
+
         # TODO: This is a dirty hack
         # Job for meta classes maybe?
         if not metamodel:
             self.__metamodel = "BG"
         else:
             self.__metamodel = metamodel
+
+        self.name = str()
+        """The name of this model."""
 
         if not name:
             self.name = f"{self.metamodel}" \
@@ -48,7 +44,10 @@ class BondGraphBase:
             self.name = name
 
         self.parent = parent
+        """The model inside which this model lives"""
+
         self.view = None
+        """Warning: to be deprecated."""
 
     def __repr__(self):
         return f"{self.metamodel}: {self.name}"
@@ -65,19 +64,49 @@ class BondGraphBase:
         self.instances -= 1
 
     @property
+    def params(self):
+        """A `dict` of parameters associated with this bond graph"""
+        raise NotImplementedError
+
+    @property
+    def state_vars(self):
+        """A `dict` of dynamic variables for this model"""
+        return []
+
+    @property
+    def control_vars(self):
+        """The external (possibly time dependant) control variables"""
+        return []
+
+    @property
+    def output_vars(self):
+        """A list of measurements, or observables, for this model"""
+        return []
+
+    @property
+    def constitutive_relations(self):
+        """The `list` of equations governing the behaviour of this model"""
+        raise NotImplementedError
+
+    @property
+    def basis_vectors(self):
+        raise NotImplementedError
+
+    @property
     def metamodel(self):
+        """The `str` description of the meta-model."""
         return self.__metamodel
 
     @property
     def template(self):
-        raise NotImplementedError
-
-    @property
-    def constitutive_relations(self):
+        """The template from which this model was generated"""
         raise NotImplementedError
 
     @property
     def uri(self):
+        """Posix-style uniform reference identifier. As models are organised
+         hierarchically, this provides a file-system like way to navigate
+         through the tree or model-component relationships."""
         if not self.parent:
             return f"{self.name}:"
         else:
@@ -85,14 +114,13 @@ class BondGraphBase:
 
     @property
     def root(self):
+        """Returns the outer-most composite model. As models are organised in
+        a tree-like manner root finds the instance of :cls:`BondGraphBase`
+        inside which this model lives."""
         if not self.parent:
             return self
         else:
             return self.parent.root
-
-    @property
-    def basis_vectors(self):
-        raise NotImplementedError
 
     def __hash__(self):
         return id(self)

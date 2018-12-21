@@ -12,32 +12,89 @@ from .exceptions import SymbolicException
 
 logger = logging.getLogger(__name__)
 
-__all__ = [
-    "extract_coefficients",
-    "reduce_model",
-    "flatten",
-    "smith_normal_form",
-    "augmented_rref"
-]
+#__all__ = [
+#    "extract_coefficients",
+#    "reduce_model",
+#    "flatten",
+#    "smith_normal_form",
+#    "augmented_rref"
+#]
 
 
-class Parameter(Symbol, NumberSymbol):
+
+class Parameter(NumberSymbol):
     is_finite = True
-    is_zero = False
-    def __new__(cls, name, value=None, **assumptions):
+    is_symbol = True
+    is_constant = True
 
-        obj = Symbol.__new__(cls, name, **assumptions)
-        try:
+    __slots__ = ['__value', 'symbol', '__nonzero']
+    def __new__(cls, name, value=None, is_nonzero=True):
+        obj = NumberSymbol.__new__(cls)
+        obj.symbol = sympy.Symbol(name)
+        if value:
             obj.__value = Number(value)
-        except ValueError:
+        else:
             obj.__value = None
-        return obj
+        obj.__nonzero = is_nonzero
 
-    def __hash__(self):
-        return id(self)
+        return obj
+    @property
+    def name(self):
+        return self.symbol.name
+
+    def _latex(self, printer=None):
+        return self.symbol._latex()
+
+    def _sympystr(self, printer=None):
+        return str(self.symbol)
+
+    def __repr__(self):
+        """Method to return the string representation.
+        Return the expression as a string.
+        """
+        from sympy.printing import sstr
+        return sstr(self, order=None)
+
+    def __str__(self):
+        from sympy.printing import sstr
+        return sstr(self, order=None)
+
+    def __nonzero__(self):
+        return  self.__nonzero
 
     def __eq__(self, other):
-        return (other == self) and (other.value == self.value)
+        if self is other:
+            return True
+
+        if not self.__value:
+            # symbolic
+            try:
+                 if other.is_number:
+                    return False
+
+                 if other.is_symbol:
+                    return self.symbol == other
+
+            except AttributeError:
+                return self == sympy.sympify(other)
+
+        smb = sympy.sympify(other)
+
+        if smb.is_symbol:
+            return False
+        return smb == self.value
+
+
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __int__(self):
+        # subclass with appropriate return value
+        return self.__value.__int__()
+
+    def __hash__(self):
+        return super(NumberSymbol, self).__hash__()
 
     @property
     def value(self):
@@ -47,18 +104,19 @@ class Parameter(Symbol, NumberSymbol):
     def value(self, v):
         self.__value = Number(v)
 
-    def evalf(self, *args, **kwargs):
-        return self.__value.evalf(*args, **kwargs)
-
-    def n(self):
-        self.__value.n()
+    def _eval_evalf(self, prec):
+        return self.__value._eval_evalf(prec)
 
 
 class Variable(Symbol):
     order = 5
 
+    def __eq__(self, other):
+        return super().__eq__(other)
+
 class Derivative(Symbol):
     order = 2
+#    def __new__(cls, name, *args, **kwargs):
 
 class Effort(Symbol):
     order = 3
@@ -73,6 +131,129 @@ class Output(Symbol):
     order = 1
 
 
+def canonical_order(symbol):
+    prefix, index = symbol.name.split('_')
+
+    if prefix == 'y':
+        return 0, int(index), 0
+    elif prefix == 'dx':
+        return 0, int(index), 1
+    elif prefix == 'e':
+        return 1, int(index), 0
+    elif prefix =='f':
+        return 1, int(index), 1
+    elif prefix == 'x':
+        return 2, int(index), 0
+    elif prefix == 'u':
+        return 2, int(index), 1
+    else:
+        return (3,0,0)
+
+def permutation(vector, key=None):
+    """
+    Args:
+        vector: The vector to sort
+        key: Optional sorting key (See: `sorted`)
+
+    Returns: list
+
+    For a given iterable, produces a list of tuples representing the
+    permutation that maps sorts the list.
+
+    Examples:
+        >>> permutation([3,2,1])
+        outputs `[(0,2),(1,1),(2,0)]`
+    """
+    return [
+        (vector.index(v), j) for (j,v) in enumerate(sorted(vector, key=key))
+    ]
+
+
+def parse_relation(
+        equation: str,
+        coordinates: list,
+        parameters: list = None) -> tuple:
+    """
+
+    Args:
+        equation: The equation in string format
+        coordinates: a list of symbolic variables for the coordinate system
+        parameters: a list of symbolic varibales that should be treated as
+        non-zero parameters.
+
+    Returns:
+        tuple (L, M, J) such that $LX + MJ(X) =0$
+
+    Parses the input string into canonical implicit form.
+    - $L$ is a sparse row vector (in dict form) of the same length as the
+    co-oridinates (dict form)
+    - $M$ is a sparse row vector that is the same size as $J$ (dict form)
+    containing the coefficients of each unique nonlinear term.
+    - $J$ is a column vector of of unique nonlinear terms.
+    """
+
+    namespace = {str(x):x for x in coordinates}
+
+    if parameters:
+        namespace.update({
+            str(x):x for x in parameters
+        })
+    try:
+        p,q = equation.split("=")
+        relation = f"({p}) -({q})"
+    except ValueError:
+        relation = equation
+
+    remainder = sympy.sympify(relation, locals=namespace).expand()
+    unknowns = []
+    for a in (remainder.atoms() - set(coordinates)):
+
+        if a.is_number:
+            continue
+        if parameters and str(a) in {str(p) for p in parameters}:
+           continue
+
+        unknowns.append(a)
+
+    if unknowns: raise SymbolicException("Unknown terms: %s", unknowns)
+
+    partials =[remainder.diff(x) for x in coordinates]
+
+    L = {}
+    M = {}
+    J = []
+
+    for i, r_i in enumerate(partials):
+        if not (r_i.atoms() & set(coordinates)) and not r_i.is_zero:
+            L[i] = r_i
+            remainder -= r_i*coordinates[i]
+
+    remainder = remainder.expand()
+
+    if remainder.is_Mul:
+        terms = [remainder]
+    elif remainder.is_zero:
+        terms = []
+    else:
+        terms = remainder
+    logger.info("Remainder %s\n",remainder)
+    for term in terms:
+        coeff = sympy.Number("1")
+        nonlinearity = sympy.Number("1")
+        logger.info("Checking factors %s\n", term.args)
+        for factor in term.args:
+            if factor.atoms() & set(coordinates):
+
+                nonlinearity = factor *nonlinearity
+            else:
+                coeff = factor * coeff
+        try:
+            index = J.index(nonlinearity)
+        except ValueError:
+            index = len(J)
+            J.append(nonlinearity)
+        M[index] = coeff
+    return L, M, J
 
 
 
@@ -721,3 +902,4 @@ def get_relations_iterator(component, mappings, coordinates, io_map=None):
             yield extract_coefficients(relation, local_map, coordinates)
         else:
             yield {}, 0.0
+

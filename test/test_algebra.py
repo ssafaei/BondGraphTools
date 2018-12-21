@@ -1,12 +1,116 @@
 import pytest
-import sympy
-import logging
 
+
+import logging
+logging.basicConfig(level=logging.INFO)
+
+import sympy
 import BondGraphTools as bgt
 from BondGraphTools import connect, new, expose
-from BondGraphTools.algebra import extract_coefficients, smith_normal_form, \
-    adjacency_to_dict, augmented_rref,_generate_substitutions,\
-    inverse_coord_maps, _generate_cv_substitutions, get_relations_iterator
+from BondGraphTools.algebra import *
+from BondGraphTools.algebra import _generate_substitutions, _generate_cv_substitutions
+
+
+class TestParameter:
+
+    def test_parameter_creation(self):
+
+        P = Parameter("K")
+        P2 = Parameter("K", value=10)
+
+        assert P is not P2
+        with pytest.raises(AttributeError):
+            P.n()
+
+        assert P2.n() == 10
+        assert P.is_number
+
+
+    def test_symbolic_cmp(self):
+        P = Parameter('K')
+        K = sympy.Symbol('K')
+
+        assert str(P) == str(K)
+        assert P is not K
+        assert P == K
+        assert P == 'K'
+
+        P.value = 10
+        assert P.value == sympy.Number(10)
+        assert P != K
+        assert P !='K'
+        assert P == 10
+
+class TestBGVariables:
+
+    # def test_variable(self):
+    #     x =  Variable('x_1')
+    #     dx = Derivative('dx_1')
+    #
+    #     assert x == Symbol('x_1')
+    def test_sort(self):
+        syms = list(sympy.symbols("e_1,e_2,f_2,f_1,x_1,dx_1,u_1,y_1"))
+
+        s_symbols = sympy.symbols("y_1, dx_1, e_1,f_1, e_2,f_2,x_1,u_1")
+
+        assert sorted(syms, key=canonical_order) == list(s_symbols)
+
+    def test_permutation_matrix(self):
+        syms = list(sympy.symbols("e_1,e_2,f_2,f_1,x_1,dx_1,u_1,y_1"))
+        s_symbols = list(sympy.symbols("y_1, dx_1, e_1,f_1, e_2,f_2,x_1,u_1"))
+
+        matrix = permutation(syms, key=canonical_order)
+
+        for i,j in matrix:
+            assert s_symbols[j] == syms[i]
+
+class TestParseRelation:
+
+    def test_basic(self):
+        ## test 1
+
+        eqn = 'e-R*f'
+        X =  sympy.symbols('e,f')
+        with pytest.raises(SymbolicException):
+            parse_relation(eqn, X)
+        R = Parameter('R')
+        P = [R]
+
+        L, M, J = parse_relation(eqn, X, P)
+
+        assert L == {0:1, 1:-R}
+        assert M == {}
+        assert J == []
+
+
+    def test_extended_array(self):
+        eqn = "f = dx"
+        X = sympy.symbols('dx,e,f,x')
+
+        L, M, J = parse_relation(eqn,X)
+
+        assert L == {0:-1,2:1}
+        assert M == {}
+        assert J == []
+
+    def test_nonlinear_function(self):
+        eqn = "f - I_s*exp(e/V_t) "
+        X = sympy.symbols('e,f')
+        Is = Parameter('I_s' )
+        V_t = Parameter('V_t')
+        P = [Is, V_t]
+
+        L, M, J = parse_relation(eqn, X, P)
+
+        assert L == {1:1}
+        assert M == {0:-Is}
+        assert J == [sympy.exp(X[0]/V_t)]
+
+    def test_nonlinear_functions(self):
+
+        eqn = "f_1 = k*exp(e_1) + k*exp(e_2)"
+        X = sympy.symbols('e,f')
+
 
 def test_extract_coeffs_lin():
     eqn = sympy.sympify("y -2*x -3")

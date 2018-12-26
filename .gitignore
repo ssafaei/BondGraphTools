@@ -6,3 +6,5 @@ doctrees/
 *.ipynb
 build/
 BondGraphTools.egg-info/
+\.pytest_cache/
+.cache/

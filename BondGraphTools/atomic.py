@@ -258,6 +258,10 @@ class EqualEffort(BondGraphBase, PortExpander):
         return "base/0"
 
     @property
+    def params(self):
+        return []
+
+    @property
     def basis_vectors(self):
         return {}, self._port_vectors(), {}
 
@@ -307,6 +311,10 @@ class EqualFlow(BondGraphBase, PortExpander):
     @property
     def basis_vectors(self):
         return {},  self._port_vectors(), {}
+
+    @property
+    def params(self):
+        return []
 
     def get_port(self, port=None):
         try:

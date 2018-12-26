@@ -44,6 +44,7 @@ def test_ss_exposure():
     assert p.name is "pin"
     assert set(model.control_vars.values()) == {(sf, 'f')}
 
+
 def test_load_modular():
     model_1 = load(file_path / "modular.bg")
 

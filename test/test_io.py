@@ -276,7 +276,7 @@ class TempFile():
             pass
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        with open(self.file, 'r' ) as file:
+        with open(self.file, 'r') as file:
             print("".join(line for line in file.readlines()))
         try:
             os.remove(self.file)

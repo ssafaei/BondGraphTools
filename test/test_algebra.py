@@ -17,6 +17,7 @@ class TestParameter:
 
         P = Parameter("K")
         P2 = Parameter("K", value=10)
+        k = Parameter("k")
 
         assert P is not P2
         with pytest.raises(AttributeError):
@@ -24,7 +25,7 @@ class TestParameter:
 
         assert P2.n() == 10
         assert P.is_number
-
+        assert str(k) == "k"
 
     def test_symbolic_cmp(self):
         P = Parameter('K')
@@ -40,6 +41,8 @@ class TestParameter:
         assert P != K
         assert P !='K'
         assert P == 10
+        assert str(P) == "K"
+        assert str([P, K]) == "[K, K]"
 
 class TestBGVariables:
 
@@ -82,7 +85,6 @@ class TestParseRelation:
         assert M == {}
         assert J == []
 
-
     def test_extended_array(self):
         eqn = "f = dx"
         X = sympy.symbols('dx,e,f,x')
@@ -96,7 +98,7 @@ class TestParseRelation:
     def test_nonlinear_function(self):
         eqn = "f - I_s*exp(e/V_t) "
         X = sympy.symbols('e,f')
-        Is = Parameter('I_s' )
+        Is = Parameter('I_s')
         V_t = Parameter('V_t')
         P = [Is, V_t]
 
@@ -108,8 +110,14 @@ class TestParseRelation:
 
     def test_nonlinear_functions(self):
 
-        eqn = "f_1 = k*exp(e_1) + k*exp(e_2)"
-        X = sympy.symbols('e,f')
+        eqn = "f_1 = k*exp(e_1) - k*exp(e_2)"
+        X = sympy.symbols('e_1,f_1, e_2,f_2')
+        k = Parameter('k')
+        L, M, J = parse_relation(eqn, X, [k])
+
+        assert L == {1:  1}
+        assert M == {0: k, 1: -k}
+        assert J == [sympy.exp(X[2]), sympy.exp(X[0])]
 
 
 def test_extract_coeffs_lin():

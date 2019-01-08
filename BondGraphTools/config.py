@@ -58,7 +58,7 @@ class Config:
             self.julia_executable = pathlib.Path(julia_executable)
 
         if python_executable and python_executable is not sys.executable:
-            rebuild=True
+            rebuild = True
         elif python_executable:
             self.python_executable = pathlib.Path(python_executable)
         else:

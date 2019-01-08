@@ -21,13 +21,13 @@ logger = logging.getLogger(__name__)
 #]
 
 
-
 class Parameter(NumberSymbol):
     is_finite = True
     is_symbol = True
     is_constant = True
 
     __slots__ = ['__value', 'symbol', '__nonzero']
+
     def __new__(cls, name, value=None, is_nonzero=True):
         obj = NumberSymbol.__new__(cls)
         obj.symbol = sympy.Symbol(name)
@@ -38,15 +38,19 @@ class Parameter(NumberSymbol):
         obj.__nonzero = is_nonzero
 
         return obj
+
     @property
     def name(self):
         return self.symbol.name
 
     def _latex(self, printer=None):
-        return self.symbol._latex()
+        return self.symbol._latex(printer)
+
+    def _str(self, printer=None):
+        return self.symbol._str(printer=None)
 
     def _sympystr(self, printer=None):
-        return str(self.symbol)
+        return str(self.symbol.name)
 
     def __repr__(self):
         """Method to return the string representation.
@@ -69,10 +73,10 @@ class Parameter(NumberSymbol):
         if not self.__value:
             # symbolic
             try:
-                 if other.is_number:
+                if other.is_number:
                     return False
 
-                 if other.is_symbol:
+                if other.is_symbol:
                     return self.symbol == other
 
             except AttributeError:
@@ -83,8 +87,6 @@ class Parameter(NumberSymbol):
         if smb.is_symbol:
             return False
         return smb == self.value
-
-
 
     def __ne__(self, other):
         return not self == other
@@ -106,6 +108,8 @@ class Parameter(NumberSymbol):
 
     def _eval_evalf(self, prec):
         return self.__value._eval_evalf(prec)
+
+
 
 
 class Variable(Symbol):
@@ -148,6 +152,7 @@ def canonical_order(symbol):
         return 2, int(index), 1
     else:
         return (3,0,0)
+
 
 def permutation(vector, key=None):
     """
@@ -192,14 +197,12 @@ def parse_relation(
     - $J$ is a column vector of of unique nonlinear terms.
     """
 
-    namespace = {str(x):x for x in coordinates}
+    namespace = {str(x): x for x in coordinates}
 
     if parameters:
-        namespace.update({
-            str(x):x for x in parameters
-        })
+        namespace.update({str(x): x for x in parameters})
     try:
-        p,q = equation.split("=")
+        p, q = equation.split("=")
         relation = f"({p}) -({q})"
     except ValueError:
         relation = equation
@@ -211,13 +214,14 @@ def parse_relation(
         if a.is_number:
             continue
         if parameters and str(a) in {str(p) for p in parameters}:
-           continue
+            continue
 
         unknowns.append(a)
 
-    if unknowns: raise SymbolicException("Unknown terms: %s", unknowns)
+    if unknowns:
+        raise SymbolicException("Unknown terms: %s", unknowns)
 
-    partials =[remainder.diff(x) for x in coordinates]
+    partials = [remainder.diff(x) for x in coordinates]
 
     L = {}
     M = {}
@@ -234,17 +238,17 @@ def parse_relation(
         terms = [remainder]
     elif remainder.is_zero:
         terms = []
+        remainder = 0  # Does this fix the print error?
     else:
-        terms = remainder
-    logger.info("Remainder %s\n",remainder)
+        terms = remainder.args
+
     for term in terms:
         coeff = sympy.Number("1")
         nonlinearity = sympy.Number("1")
         logger.info("Checking factors %s\n", term.args)
         for factor in term.args:
             if factor.atoms() & set(coordinates):
-
-                nonlinearity = factor *nonlinearity
+                nonlinearity = factor * nonlinearity
             else:
                 coeff = factor * coeff
         try:
@@ -254,7 +258,6 @@ def parse_relation(
             J.append(nonlinearity)
         M[index] = coeff
     return L, M, J
-
 
 
 def extract_coefficients(equation: sympy.Expr,

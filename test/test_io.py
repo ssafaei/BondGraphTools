@@ -10,6 +10,7 @@ import logging
 file_path = pathlib.Path(__file__).parent / 'files'
 logging.basicConfig(level=logging.DEBUG)
 
+
 def test_load_rlc():
 
     path = str(file_path / 'rlc.bg')
@@ -28,8 +29,8 @@ def test_load_rlc():
     assert 'u_0' in model.control_vars
 
     assert c.params['C']['value'] == 10
-    assert r.params['r']['value']  == 100
-    assert l.params['L']['value']  == 10
+    assert r.params['r']['value'] == 100
+    assert l.params['L']['value'] == 10
 
     r_0, = r.ports
     c_0, = c.ports
@@ -81,6 +82,7 @@ def test_load_rlc_parallel():
     for r in rel:
         assert r in (eq1, eq2)
 
+
 def test_load_modular():
 
     model_1 = load(file_path / "modular.bg")
@@ -89,6 +91,7 @@ def test_load_modular():
     assert model_1.name == "system"
 
     tree = set()
+
     def uri_tree(bg):
         tree.add(bg.uri)
         try:
@@ -126,6 +129,7 @@ def test_load_model_from_modular():
     assert len(Vs.components) == 3
     assert len(Vs2.components) == 3
 
+
 @pytest.mark.usefixture("rlc")
 def test_save_build_component(rlc):
 
@@ -138,6 +142,7 @@ def test_save_build_component(rlc):
     c_str = dm._build_component_string(c)
     assert r_str == f"{r.name} base/R r=10"
     assert c_str == f"{c.name} base/C"
+
 
 @pytest.mark.usefixture("rlc")
 def test_save_build_model(rlc):
@@ -157,6 +162,7 @@ def test_save_build_model(rlc):
     assert set(model_dict["netlist"]) == {
         f"{r.name} {kvl.name}", f"{c.name} {kvl.name}", f"{l.name} {kvl.name}"
     }
+
 
 def test_build_templated_model():
     root = new(name="System")
@@ -239,6 +245,7 @@ def test_save_idempotent():
     assert model_1.name == model_2.name
     assert_components_are_equal(model_1, model_2)
 
+
 def assert_components_are_equal(bg_1, bg_2):
     names = {c.name for c in bg_1.components} & {c.name for c in bg_2.components}
     if len(names) != len(bg_1.components):
@@ -251,6 +258,7 @@ def assert_components_are_equal(bg_1, bg_2):
             assert_components_are_equal(c1, c2)
         else:
             assert_atomics_are_equal(c1,c2)
+
 
 def assert_atomics_are_equal(c1,c2):
     ports_1 = {repr(p) for p in c1.ports}

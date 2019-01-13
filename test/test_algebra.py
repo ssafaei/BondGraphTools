@@ -79,7 +79,7 @@ class TestParseRelation:
         R = Parameter('R')
         P = [R]
 
-        L, M, J = parse_relation(eqn, X, P)
+        _,_,  L, M, J = parse_relation(eqn, X, P)
 
         assert L == {0:1, 1:-R}
         assert M == {}
@@ -89,7 +89,7 @@ class TestParseRelation:
         eqn = "f = dx"
         X = sympy.symbols('dx,e,f,x')
 
-        L, M, J = parse_relation(eqn,X)
+        _,_, L, M, J = parse_relation(eqn,X)
 
         assert L == {0:-1,2:1}
         assert M == {}
@@ -102,7 +102,7 @@ class TestParseRelation:
         V_t = Parameter('V_t')
         P = [Is, V_t]
 
-        L, M, J = parse_relation(eqn, X, P)
+        _,_,  L, M, J = parse_relation(eqn, X, P)
 
         assert L == {1:1}
         assert M == {0:-Is}
@@ -113,11 +113,20 @@ class TestParseRelation:
         eqn = "f_1 = k*exp(e_1) - k*exp(e_2)"
         X = sympy.symbols('e_1,f_1, e_2,f_2')
         k = Parameter('k')
-        L, M, J = parse_relation(eqn, X, [k])
+        _, _, L, M, J = parse_relation(eqn, X, [k])
 
         assert L == {1:  1}
         assert M == {0: k, 1: -k}
         assert J == [sympy.exp(X[2]), sympy.exp(X[0])]
+
+
+class TestMerge():
+    def test_1(self):
+        """
+
+
+        """
+
 
 
 def test_extract_coeffs_lin():

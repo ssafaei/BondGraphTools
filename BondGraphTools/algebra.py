@@ -1,7 +1,7 @@
 """
 This module contains methods for performing symbolic model reduction.
 """
-
+from collections import namedtuple
 
 import logging
 import sympy
@@ -174,6 +174,9 @@ def permutation(vector, key=None):
     ]
 
 
+DynamicalSystem = namedtuple("system", ["X", "P", "L", "M", "J"])
+
+
 def parse_relation(
         equation: str,
         coordinates: list,
@@ -238,7 +241,6 @@ def parse_relation(
         terms = [remainder]
     elif remainder.is_zero:
         terms = []
-        remainder = 0  # Does this fix the print error?
     else:
         terms = remainder.args
 
@@ -257,7 +259,22 @@ def parse_relation(
             index = len(J)
             J.append(nonlinearity)
         M[index] = coeff
-    return L, M, J
+
+    return DynamicalSystem(coordinates, parameters, L, M, J)
+
+
+def merge_systems(systems):
+    """
+    Args:
+        systems: An order lists of system to merge
+
+    Returns:
+        A new system, and an inverse mapping.
+
+    Merges a set of systems together.
+
+
+    """
 
 
 def extract_coefficients(equation: sympy.Expr,

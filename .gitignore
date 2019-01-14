@@ -8,3 +8,4 @@ build/
 BondGraphTools.egg-info/
 \.pytest_cache/
 .cache/
+docs/html

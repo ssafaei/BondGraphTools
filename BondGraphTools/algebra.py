@@ -111,7 +111,6 @@ class Parameter(NumberSymbol):
 
 
 
-
 class Variable(Symbol):
     order = 5
 

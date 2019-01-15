@@ -4,7 +4,7 @@
   "components":{
     "Ce":{
       "description":"Concentration of Chemical Species",
-      "class": "Component",
+      "class": "Atomic",
       "metamodel":"C",
       "ports":{
         "0":null
@@ -24,7 +24,7 @@
     },
     "Re":{
       "description": "Biochemical Reaction",
-      "class": "SymmetricComponent",
+      "class": "SymmetricAtomic",
       "metamodel":"R",
       "ports":{
         "0":null,

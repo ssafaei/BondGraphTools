@@ -23,8 +23,10 @@ logger = logging.getLogger(__name__)
 
 class Parameter(NumberSymbol):
     is_finite = True
+    is_NumberSymbol = True
     is_symbol = True
     is_constant = True
+    is_atom = True
 
     __slots__ = ['__value', 'symbol', '__nonzero']
 
@@ -39,6 +41,12 @@ class Parameter(NumberSymbol):
 
         return obj
 
+    def as_ordered_terms(self, order=None, data=False):
+        return self.symbol(order, data)
+
+    def as_terms(self):
+        return self.symbol.as_terms()
+
     @property
     def name(self):
         return self.symbol.name
@@ -47,24 +55,25 @@ class Parameter(NumberSymbol):
         return self.symbol._latex(printer)
 
     def _str(self, printer=None):
-        return self.symbol._str(printer=None)
+        print("print_str_called")
+        return self.name
 
     def _sympystr(self, printer=None):
         return str(self.symbol.name)
 
-    def __repr__(self):
-        """Method to return the string representation.
-        Return the expression as a string.
-        """
-        from sympy.printing import sstr
-        return sstr(self, order=None)
-
-    def __str__(self):
-        from sympy.printing import sstr
-        return sstr(self, order=None)
+    # def __repr__(self):
+    #     """Method to return the string representation.
+    #     Return the expression as a string.
+    #     """
+    #     from sympy.printing import sstr
+    #     return sstr(self.symbol, order=None)
+    #
+    # def __str__(self):
+    #     from sympy.printing import sstr
+    #     return sstr(self.symbol, order=None)
 
     def __nonzero__(self):
-        return  self.__nonzero
+        return self.__nonzero
 
     def __eq__(self, other):
         if self is other:

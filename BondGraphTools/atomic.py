@@ -1,4 +1,4 @@
-"""This module contains class definitions for atomic components; those which
+"""This module contains class definitions for atomic models; those which
 cannot be decomposed into other components.
 """
 
@@ -9,7 +9,14 @@ from .view import Glyph
 
 logger = logging.getLogger(__name__)
 
-class Component(BondGraphBase, PortManager):
+_symbolics = sp.Expr, sp.Symbol
+
+
+def _is_symbolic_const(value):
+    return isinstance(value, _symbolics)
+
+
+class Atomic(BondGraphBase, PortManager):
     """
     Atomic bond graph components are those defined by constitutive relations.
     """
@@ -51,7 +58,7 @@ class Component(BondGraphBase, PortManager):
         def is_const(value):
             if isinstance(value, (int, float, complex)):
                 return True
-            elif isinstance(value, sp.Symbol):
+            elif _is_symbolic_const(value):
                 return True
             else:
                 return False
@@ -114,7 +121,7 @@ class Component(BondGraphBase, PortManager):
         subs = []
 
         def _value_of(v):
-            if isinstance(v, (int, float, complex, sp.Symbol)):
+            if isinstance(v, (int, float, complex, _symbolics)):
                 return v
             elif not v:
                 raise KeyError
@@ -217,15 +224,15 @@ class Component(BondGraphBase, PortManager):
         return super().__hash__()
 
 
-class SymmetricComponent(Component):
+class SymmetricAtomic(Atomic):
     """
-    Refer to `Component`.
+    Refer to `Atomic`.
 
     Instances of this class are multi-port components which are able to have
     connections made without specifying ports.
     """
     def get_port(self, port=None):
-        """See `Component`"""
+        """See `Atomict`"""
         if not port and not isinstance(port, int):
             p = [port for port in self.ports if not port.is_connected]
 

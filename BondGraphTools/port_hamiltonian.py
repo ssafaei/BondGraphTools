@@ -1,10 +1,10 @@
 
 import sympy as sp
 
-from .atomic import Component
+from .atomic import Atomic
 
 
-class PortHamiltonian(Component):
+class PortHamiltonian(Atomic):
     """
     Port Hamiltonians are specified by a energy storage function $H(x)$ which
     generate the dynamics of the state variables $x$ and the associated
@@ -24,7 +24,7 @@ class PortHamiltonian(Component):
                            generate the component.
 
 
-    See Also: Component
+    See Also: Atomic
     """
     __vars = {"x", "y", "z"}
 
@@ -77,7 +77,6 @@ class PortHamiltonian(Component):
             # todo: this is dirty, fix me
             relations.append(str(Hx.diff(q).simplify() - sp.S(f"e_{i}")))
             relations.append(f"d{q} - f_{i}")
-
 
         ports = {i:None for i in range(len(state_vars))}
 

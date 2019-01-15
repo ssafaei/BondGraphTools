@@ -225,7 +225,7 @@ def new(component=None, name=None, library=base_id, value=None, **kwargs):
     """
 
     if not component:
-        cls = _find_subclass("BondGraph", BondGraphBase)
+        cls = _find_subclass("Composite", BondGraphBase)
         return cls(name=name)
     elif isinstance(component, str):
         build_args = get_component(component, library)

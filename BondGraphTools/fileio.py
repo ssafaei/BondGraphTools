@@ -12,7 +12,7 @@ import logging
 import pathlib
 import yaml
 
-from .compound import BondGraph
+from .compound import Composite
 from .actions import connect, new, expose
 from .exceptions import *
 
@@ -69,7 +69,7 @@ def _build_model_data(model, templates):
     components = []
     out = {}
     for c in model.components:
-        if isinstance(c, BondGraph):
+        if isinstance(c, Composite):
             _, uri = c.uri.split(":")
             components.append(
                 f"{c.name} {uri}"
@@ -132,7 +132,7 @@ def load(file_name, model=None, as_name=None):
         file_name (str or Path): The file to load.
 
     Returns:
-        An instance of `BondGraph`
+        An instance of `Composite`
 
     Raises:
         `NotImplementedError` for incorrect file version.

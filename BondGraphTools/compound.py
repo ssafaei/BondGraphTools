@@ -14,11 +14,11 @@ from .algebra import adjacency_to_dict, \
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "BondGraph"
+    "Composite"
 ]
 
 
-class BondGraph(BondGraphBase, LabeledPortManager):
+class Composite(BondGraphBase, LabeledPortManager):
     """Representation of a bond graph model.
     """
     def __init__(self, name, components=None, **kwargs):
@@ -127,7 +127,6 @@ class BondGraph(BondGraphBase, LabeledPortManager):
         for item in work_list:
             item.parent = self
             self.components.add(item)
-
 
     def remove(self, component):
         # Warning: Scheduled to be deprecated
@@ -425,7 +424,6 @@ class BondGraph(BondGraphBase, LabeledPortManager):
         return tangent_space, port_space, control_space
 
 
-
 def _is_label_invalid(label):
     if not isinstance(label, str):
         return True
@@ -435,6 +433,7 @@ def _is_label_invalid(label):
             return True
 
     return False
+
 
 class BondSet(OrderedSet):
     """

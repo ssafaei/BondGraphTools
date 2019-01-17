@@ -9,6 +9,7 @@ from .view import Glyph
 
 logger = logging.getLogger(__name__)
 
+
 class Component(BondGraphBase, PortManager):
     """
     Atomic bond graph components are those defined by constitutive relations.
@@ -46,7 +47,7 @@ class Component(BondGraphBase, PortManager):
         def is_const(value):
             if isinstance(value, (int, float, complex)):
                 return True
-            elif isinstance(value, sp.Symbol):
+            elif isinstance(value, (sp.Symbol, sp.Expr)):
                 return True
             else:
                 return False
@@ -109,7 +110,7 @@ class Component(BondGraphBase, PortManager):
         subs = []
 
         def _value_of(v):
-            if isinstance(v, (int, float, complex, sp.Symbol)):
+            if isinstance(v, (int, float, complex, sp.Symbol, sp.Expr)):
                 return v
             elif not v:
                 raise KeyError

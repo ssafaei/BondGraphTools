@@ -50,6 +50,7 @@ def _fetch_ic(x0, dx0, system, func, eps=0.001):
 
     return X0, DX0
 
+
 def simulate(system,
              timespan,
              x0,
@@ -114,11 +115,9 @@ def simulate(system,
 
     tspan = tuple(float(t) for t in timespan)
 
-
     func_str, diffs = to_julia_function_string(system, control_vars)
     func = j.eval(func_str)
     X0, DX0 = _fetch_ic(x0, dx0, system, func)
-
 
     problem = de.DAEProblem(func, DX0, X0, tspan, differential_vars=diffs)
 
@@ -160,7 +159,6 @@ def to_julia_function_string(model, control_vars=None, in_place=False):
         x_subs.append((x, X[i+1]))
         dx_subs.append((sp.S(f'dx_{i}'), dX[i+1]))
 
-
     cv_strings, dcv_strings = _generate_control_strings(
         list(model.control_vars.keys()),
         control_vars,
@@ -170,10 +168,6 @@ def to_julia_function_string(model, control_vars=None, in_place=False):
 
     differential_vars = []
     subs = x_subs + dx_subs
-
-    function_header = ""
-    function_body = ""
-    function_footer = ""
 
     if in_place:
         function_header = "function f(res, dX, X, p, t)\n"
@@ -187,12 +181,12 @@ def to_julia_function_string(model, control_vars=None, in_place=False):
         if dcv:
             function_header += dcv
 
-    assert model.constitutive_relations
+    function_body = ""
+    function_footer = ""
 
     for relation in model.constitutive_relations:
 
-        eqn_str = str(relation.subs(subs))
-        eqn_str = eqn_str.replace('**', '^')
+        eqn_str = str(relation.subs(subs).evalf())
         if 'dX' in eqn_str:
             differential_vars.append(True)
         else:
@@ -207,7 +201,7 @@ def to_julia_function_string(model, control_vars=None, in_place=False):
 
     out_str = function_header + function_body + function_footer
 
-    return (out_str,
+    return (out_str.replace("**", "^"),
             differential_vars)
 
 
@@ -235,7 +229,7 @@ def _generate_control_strings(cv, cv_substitutions, x_subs, dx_subs):
 
             u_i = sp.sympify(val).subs(subs)
             du_i = u_i.diff(sp.S('t')) + sum([
-                u_i.diff(X)*DX for X,DX in partial_pairs
+                u_i.diff(X)*DX for X, DX in partial_pairs
             ])
             cv_strings.append(f"    {str(var)} = {u_i}\n")
             dcv_strings.append(f"    d{str(var)} = {du_i}\n")

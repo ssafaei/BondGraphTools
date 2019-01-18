@@ -21,103 +21,165 @@ logger = logging.getLogger(__name__)
 #]
 
 
-class Parameter(NumberSymbol):
+def evaluate(equation):
+    try:
+        if equation.is_Atom:
+            return equation.evalf()
+    except AttributeError:
+        pass
+    except TypeError:
+        return equation
+
+    new_args = [evaluate(a) for a in equation.args]
+
+    return equation.__class__(*new_args)
+
+class Parameter(sympy.Symbol):
+    """ Global parameter class.
+
+    Global parameters are uniquely specified by name.
+
+
+    """
+
+    __slot__ = ['value']
+    is_number = True
+    is_nonzero = True
     is_finite = True
-    is_NumberSymbol = True
-    is_symbol = True
     is_constant = True
-    is_atom = True
 
-    __slots__ = ['__value', 'symbol', '__nonzero']
-
-    def __new__(cls, name, value=None, is_nonzero=True):
-        obj = NumberSymbol.__new__(cls)
-        obj.symbol = sympy.Symbol(name)
-        if value:
-            obj.__value = Number(value)
-        else:
-            obj.__value = None
-        obj.__nonzero = is_nonzero
-
+    def __new__(cls, name, value=None, **assumptions):
+        obj = super().__new__(cls, name, **assumptions)
+        obj.value = value
         return obj
 
-    def as_ordered_terms(self, order=None, data=False):
-        return self.symbol(order, data)
-
-    def as_terms(self):
-        return self.symbol.as_terms()
-
-    @property
-    def name(self):
-        return self.symbol.name
-
-    def _latex(self, printer=None):
-        return self.symbol._latex(printer)
-
-    def _str(self, printer=None):
-        print("print_str_called")
-        return self.name
-
-    def _sympystr(self, printer=None):
-        return str(self.symbol.name)
+    def evalf(self, *args):
+        if self.value is None:
+            return super().evalf()
+        else:
+            return sympy.Float(self.value).evalf(*args)
 
     # def __repr__(self):
-    #     """Method to return the string representation.
-    #     Return the expression as a string.
-    #     """
-    #     from sympy.printing import sstr
-    #     return sstr(self.symbol, order=None)
+    #     return self.name
     #
     # def __str__(self):
-    #     from sympy.printing import sstr
-    #     return sstr(self.symbol, order=None)
+    #     return self.name
 
-    def __nonzero__(self):
-        return self.__nonzero
+    def __hash__(self):
+        return super().__hash__()
 
     def __eq__(self, other):
         if self is other:
             return True
 
-        if not self.__value:
-            # symbolic
-            try:
-                if other.is_number:
-                    return False
+        if self.value is None:
+            if other.__class__ is Parameter and other.value is not None:
+                return False
+            else:
+                return super().__eq__(other)
+        else:
+            if other.__class__ is Parameter:
+                return super().__eq__(other) and self.value == other.value
 
-                if other.is_symbol:
-                    return self.symbol == other
+        return False
 
-            except AttributeError:
-                return self == sympy.sympify(other)
-
-        smb = sympy.sympify(other)
-
-        if smb.is_symbol:
-            return False
-        return smb == self.value
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __int__(self):
-        # subclass with appropriate return value
-        return self.__value.__int__()
-
-    def __hash__(self):
-        return super(NumberSymbol, self).__hash__()
-
-    @property
-    def value(self):
-        return self.__value
-
-    @value.setter
-    def value(self, v):
-        self.__value = Number(v)
-
-    def _eval_evalf(self, prec):
-        return self.__value._eval_evalf(prec)
-
+# class Parameter(NumberSymbol):
+#     is_finite = True
+#     is_NumberSymbol = True
+#     is_symbol = True
+#     is_constant = True
+#     is_atom = True
+#
+#     __slots__ = ['__value', 'symbol', '__nonzero']
+#
+#     def __new__(cls, name, value=None, is_nonzero=True):
+#         obj = NumberSymbol.__new__(cls)
+#         obj.symbol = sympy.Symbol(name)
+#         if value:
+#             obj.__value = Number(value)
+#         else:
+#             obj.__value = None
+#         obj.__nonzero = is_nonzero
+#
+#         return obj
+#
+#     def as_ordered_terms(self, order=None, data=False):
+#         return self.symbol(order, data)
+#
+#     def as_terms(self):
+#         return self.symbol.as_terms()
+#
+#     @property
+#     def name(self):
+#         return self.symbol.name
+#
+#     def _latex(self, printer=None):
+#         return self.symbol._latex(printer)
+#
+#     def _str(self, printer=None):
+#         print("print_str_called")
+#         return self.name
+#
+#     def _sympystr(self, printer=None):
+#         return str(self.symbol.name)
+#
+#     # def __repr__(self):
+#     #     """Method to return the string representation.
+#     #     Return the expression as a string.
+#     #     """
+#     #     from sympy.printing import sstr
+#     #     return sstr(self.symbol, order=None)
+#     #
+#     # def __str__(self):
+#     #     from sympy.printing import sstr
+#     #     return sstr(self.symbol, order=None)
+#
+#     def __nonzero__(self):
+#         return self.__nonzero
+#
+#     def __eq__(self, other):
+#         if self is other:
+#             return True
+#
+#         if not self.__value:
+#             # symbolic
+#             try:
+#                 if other.is_number:
+#                     return False
+#
+#                 if other.is_symbol:
+#                     return self.symbol == other
+#
+#             except AttributeError:
+#                 return self == sympy.sympify(other)
+#
+#         smb = sympy.sympify(other)
+#
+#         if smb.is_symbol:
+#             return False
+#         return smb == self.value
+#
+#     def __ne__(self, other):
+#         return not self == other
+#
+#     def __int__(self):
+#         # subclass with appropriate return value
+#         return self.__value.__int__()
+#
+#     def __hash__(self):
+#         return super(NumberSymbol, self).__hash__()
+#
+#     @property
+#     def value(self):
+#         return self.__value
+#
+#     @value.setter
+#     def value(self, v):
+#         self.__value = Number(v)
+#
+#     def _eval_evalf(self, prec):
+#         return self.__value._eval_evalf(prec)
+#
 
 
 class Variable(Symbol):

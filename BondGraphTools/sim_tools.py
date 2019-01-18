@@ -9,7 +9,7 @@ from sympy.core import SympifyError
 from scipy.optimize import broyden1
 
 from .exceptions import ModelException, SolverException
-
+from .algebra import evaluate
 logger = logging.getLogger(__name__)
 
 
@@ -114,15 +114,13 @@ def simulate(system,
 
     tspan = tuple(float(t) for t in timespan)
 
-
     func_str, diffs = to_julia_function_string(system, control_vars)
     func = j.eval(func_str)
     X0, DX0 = _fetch_ic(x0, dx0, system, func)
 
-
     problem = de.DAEProblem(func, DX0, X0, tspan, differential_vars=diffs)
 
-    sol = de.solve(problem, dense=True, saveat=float(dt))
+    sol = de.solve(problem, de.IDA(), dense=True, saveat=float(dt))
 
     if sol.retcode not in ("Default", "Success"):
         raise SolverException("Integration error: Solver returned %s "
@@ -131,6 +129,7 @@ def simulate(system,
     t = np.transpose(sol.t)
 
     return np.resize(t, (len(t), 1)), np.transpose(sol.u).T
+
 
 def to_julia_function_string(model, control_vars=None, in_place=False):
     """
@@ -143,6 +142,7 @@ def to_julia_function_string(model, control_vars=None, in_place=False):
         model:
         control_vars:
         in_place:
+        evaluate:
 
     Returns:
         (string, list)
@@ -158,7 +158,6 @@ def to_julia_function_string(model, control_vars=None, in_place=False):
     for i, x in enumerate(model.state_vars):
         x_subs.append((x, X[i+1]))
         dx_subs.append((sp.S(f'dx_{i}'), dX[i+1]))
-
 
     cv_strings, dcv_strings = _generate_control_strings(
         list(model.control_vars.keys()),
@@ -190,7 +189,8 @@ def to_julia_function_string(model, control_vars=None, in_place=False):
 
     for relation in model.constitutive_relations:
 
-        eqn_str = str(relation.subs(subs))
+        eqn_str = str(evaluate(relation.subs(subs)))
+
         eqn_str = eqn_str.replace('**', '^')
         if 'dX' in eqn_str:
             differential_vars.append(True)

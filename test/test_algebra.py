@@ -18,13 +18,13 @@ class TestParameter:
         P2 = Parameter("K", value=10)
         k = Parameter("k")
 
-        assert P is not P2
-        with pytest.raises(AttributeError):
-            P.n()
-
-        assert P2.n() == 10
+        assert P is P2
+        assert P.value == 10
+        assert P2.evalf() == 10
         assert P.is_number
         assert str(k) == "k"
+        P2.value = 1
+        assert P.value == 1
 
     def test_symbolic_cmp(self):
         P = Parameter('K')
@@ -32,16 +32,12 @@ class TestParameter:
 
         assert str(P) == str(K)
         assert P is not K
-        assert P == K
-        assert P == 'K'
 
         P.value = 10
         assert P.value == sympy.Number(10)
         assert P != K
-        assert P !='K'
-        assert P == 10
-        assert str(P) == "K"
-        assert str([P, K]) == "[K, K]"
+        assert P != 'K'
+
 
 class TestBGVariables:
 

@@ -65,3 +65,4 @@ from .fileio import save, load
 from .compound import Composite
 from .sim_tools import simulate
 from .view import draw
+from .algebra import Parameter

@@ -21,13 +21,8 @@
       },
       "params": {
         "r": {
-          "description": "Resistance",
-          "value": 1000,
-          "range": [
-            0,
-            "inf"
-          ]
-        }
+          "description": "Resistance"
+          }
       },
       "constitutive_relations": [
         "e_0 - f_0*r"
@@ -42,12 +37,7 @@
       },
       "params": {
         "C": {
-          "description": "Capacitance",
-          "value": 1000,
-          "range": [
-            0,
-            "inf"
-          ]
+          "description": "Capacitance"
         }
       },
       "state_vars":{
@@ -70,12 +60,7 @@
       },
       "params": {
         "L": {
-          "description": "Inductance",
-          "value": 2000,
-          "range": [
-            0,
-            "inf"
-          ]
+          "description": "Inductance"
         }
       },
       "constitutive_relations": [

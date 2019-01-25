@@ -34,6 +34,7 @@ def evaluate(equation):
 
     return equation.__class__(*new_args)
 
+
 class Parameter(sympy.Symbol):
     """ Global parameter class.
 
@@ -41,7 +42,6 @@ class Parameter(sympy.Symbol):
 
 
     """
-
     __slot__ = ['value']
     is_number = True
     is_nonzero = True
@@ -83,126 +83,53 @@ class Parameter(sympy.Symbol):
 
         return False
 
-# class Parameter(NumberSymbol):
-#     is_finite = True
-#     is_NumberSymbol = True
-#     is_symbol = True
-#     is_constant = True
-#     is_atom = True
-#
-#     __slots__ = ['__value', 'symbol', '__nonzero']
-#
-#     def __new__(cls, name, value=None, is_nonzero=True):
-#         obj = NumberSymbol.__new__(cls)
-#         obj.symbol = sympy.Symbol(name)
-#         if value:
-#             obj.__value = Number(value)
-#         else:
-#             obj.__value = None
-#         obj.__nonzero = is_nonzero
-#
-#         return obj
-#
-#     def as_ordered_terms(self, order=None, data=False):
-#         return self.symbol(order, data)
-#
-#     def as_terms(self):
-#         return self.symbol.as_terms()
-#
-#     @property
-#     def name(self):
-#         return self.symbol.name
-#
-#     def _latex(self, printer=None):
-#         return self.symbol._latex(printer)
-#
-#     def _str(self, printer=None):
-#         print("print_str_called")
-#         return self.name
-#
-#     def _sympystr(self, printer=None):
-#         return str(self.symbol.name)
-#
-#     # def __repr__(self):
-#     #     """Method to return the string representation.
-#     #     Return the expression as a string.
-#     #     """
-#     #     from sympy.printing import sstr
-#     #     return sstr(self.symbol, order=None)
-#     #
-#     # def __str__(self):
-#     #     from sympy.printing import sstr
-#     #     return sstr(self.symbol, order=None)
-#
-#     def __nonzero__(self):
-#         return self.__nonzero
-#
-#     def __eq__(self, other):
-#         if self is other:
-#             return True
-#
-#         if not self.__value:
-#             # symbolic
-#             try:
-#                 if other.is_number:
-#                     return False
-#
-#                 if other.is_symbol:
-#                     return self.symbol == other
-#
-#             except AttributeError:
-#                 return self == sympy.sympify(other)
-#
-#         smb = sympy.sympify(other)
-#
-#         if smb.is_symbol:
-#             return False
-#         return smb == self.value
-#
-#     def __ne__(self, other):
-#         return not self == other
-#
-#     def __int__(self):
-#         # subclass with appropriate return value
-#         return self.__value.__int__()
-#
-#     def __hash__(self):
-#         return super(NumberSymbol, self).__hash__()
-#
-#     @property
-#     def value(self):
-#         return self.__value
-#
-#     @value.setter
-#     def value(self, v):
-#         self.__value = Number(v)
-#
-#     def _eval_evalf(self, prec):
-#         return self.__value._eval_evalf(prec)
-#
-
 
 class Variable(Symbol):
     order = 5
 
+    def __hash__(self):
+        return super().__hash__()
+
     def __eq__(self, other):
         return super().__eq__(other)
 
-class Derivative(Symbol):
+
+class DVariable(Symbol):
     order = 2
-#    def __new__(cls, name, *args, **kwargs):
+
+    def __hash__(self):
+        return super().__hash__()
+
+    def __new__(cls, name, **assumptions):
+        obj = super().__new__(cls, f"d{name}", **assumptions)
+        return obj
+
 
 class Effort(Symbol):
     order = 3
+    def __hash__(self):
+        return super().__hash__()
+
 
 class Flow(Symbol):
     order = 4
 
+    def __hash__(self):
+        return super().__hash__()
+
+
 class Control(Symbol):
     order = 6
 
+    def __hash__(self):
+        return super().__hash__()
+
+
 class Output(Symbol):
     order = 1
+
+    def __hash__(self):
+        return super().__hash__()
 
 
 def canonical_order(symbol):
@@ -250,14 +177,16 @@ DynamicalSystem = namedtuple("system", ["X", "P", "L", "M", "J"])
 def parse_relation(
         equation: str,
         coordinates: list,
-        parameters: list = None) -> tuple:
+        parameters: set = None,
+        substitutions: set = None) -> tuple:
     """
 
     Args:
         equation: The equation in string format
         coordinates: a list of symbolic variables for the coordinate system
-        parameters: a list of symbolic varibales that should be treated as
+        parameters: a set of symbolic varibales that should be treated as
         non-zero parameters.
+        substitutions: A set tuples (p, v) where p is a symbolic variable and v it's value
 
     Returns:
         tuple (L, M, J) such that $LX + MJ(X) =0$
@@ -271,35 +200,50 @@ def parse_relation(
     """
 
     namespace = {str(x): x for x in coordinates}
-
+    logger.info("Got coords: %s", [(c, c.__class__) for c in coordinates])
     if parameters:
         namespace.update({str(x): x for x in parameters})
     try:
         p, q = equation.split("=")
         relation = f"({p}) -({q})"
-    except ValueError:
+    except (ValueError, AttributeError):
         relation = equation
 
-    remainder = sympy.sympify(relation, locals=namespace).expand()
-    unknowns = []
-    for a in (remainder.atoms() - set(coordinates)):
+    logger.info(f"Trying to sympify \'{relation}\' with locals={namespace}")
 
+    remainder = sympy.sympify(relation, locals=namespace).expand()
+
+    logger.info(f"Got {remainder}")
+
+    if substitutions:
+        remainder = remainder.subs(substitutions)
+
+    unknowns = []
+    for a in remainder.atoms():
+        if a in coordinates:
+            continue
         if a.is_number:
             continue
         if parameters and str(a) in {str(p) for p in parameters}:
             continue
 
+        # TODO: hack to get around weird behaviour with sympy
+        if a.name in namespace:
+            remainder = remainder.subs(a, namespace[a.name])
+            continue
+
+        logger.info(f"Don't know what to do with {a} of type f{a.__class__} ")
         unknowns.append(a)
 
     if unknowns:
-        raise SymbolicException("Unknown terms: %s", unknowns)
-
-    partials = [remainder.diff(x) for x in coordinates]
+        raise SymbolicException(f"While parsing {relation} found unknown " 
+                                f"terms {unknowns} in namespace {namespace}")
 
     L = {}
     M = {}
     J = []
 
+    partials = [remainder.diff(x) for x in coordinates]
     for i, r_i in enumerate(partials):
         if not (r_i.atoms() & set(coordinates)) and not r_i.is_zero:
             L[i] = r_i
@@ -330,10 +274,83 @@ def parse_relation(
             J.append(nonlinearity)
         M[index] = coeff
 
-    return DynamicalSystem(coordinates, parameters, L, M, J)
+    return L, M, J
 
 
-def merge_systems(systems):
+def is_number(value):
+    if isinstance(value, (float, complex, int)):
+        return True
+    try:
+        return value.is_number
+    except AttributeError:
+        pass
+    return False
+
+
+def _make_coords(model):
+    derivatives = [DVariable(x) for x in model.state_vars]
+    state = [Variable(x) for x in model.state_vars]
+
+    inputs = [Control(u) for u in model.control_vars]
+    outputs = []
+
+    ports = []
+    for p in model.ports:
+
+        ports.append(Effort(f"e_{p.index}"))
+        ports.append(Flow(f"f_{p.index}"))
+
+    params = set()
+    substitutions = set()
+
+    for param, value in model.params.items():
+        if not value or param in model.control_vars:
+            pass
+        elif isinstance(value, Parameter):
+            params.add(value)
+        elif is_number(value):
+            substitutions.add((sympy.Symbol(param), value))
+        else:
+            raise NotImplementedError(f"Don't know how to treat {model.uri}.{param} "
+                                      f"with Value {value}")
+    return outputs + derivatives + ports + state + inputs, params, substitutions
+
+
+def _generate_atomics_system(model):
+    """
+    Args:
+          model: Instance of `BondGraphBase` from which to generate matrix equation.
+
+    Returns:
+
+        X, L, M and J such that
+
+        LX + M*J(X) = 0
+    """
+    # coordinates is list
+    # parameters is a set
+
+    coordinates, parameters, substitutions = _make_coords(model)
+
+    L = {}  # Matrix for linear part {row:  {column: value }}
+    M = {}  # Matrix for nonlinear part {row:  {column: value }}
+    J = []  # nonlinear terms
+
+    for i, relation in enumerate(model.constitutive_relations):
+        L_1, M_1, J_1 = parse_relation(relation, coordinates, parameters, substitutions)
+        L[i] = L_1
+        if J_1:
+            offset = len(J)
+            J = J + J_1
+            M[i] = {(index + offset): coeff for index, coeff in M_1.items()}
+
+    return coordinates, parameters, L, M, J
+
+
+
+
+
+def merge_systems(system, args):
     """
     Args:
         systems: An order lists of system to merge
@@ -343,8 +360,26 @@ def merge_systems(systems):
 
     Merges a set of systems together.
 
-
+    Recursive Implelemtation.
+    We should do this in a loop instead, as it'll prolly be faster
     """
+    old_system, *new_args = args
+
+    (c1, c2), (p1,p2) = zip(system, old_system)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def extract_coefficients(equation: sympy.Expr,
@@ -485,24 +520,25 @@ def _process_constraints(linear_op,
         atoms = constraint.atoms() & set(coord_atoms)
 
         # todo: check to see if we can solve f(x) = u => g(u) = x
-        if len(atoms) == 1:
-            c = atoms.pop()
-            logger.debug("Attempting to find inverse")
-            solns = list(sympy.solveset(constraint, c))
-            if len(solns) == 1:
-                idx = coordinates.index(c)
-                sol = solns.pop()
-
-                linear_op = linear_op.col_join(
-                    sympy.SparseMatrix(1, linear_op.cols, {(0, idx): 1})
-                )
-                nonlinear_op = nonlinear_op.col_join(
-                    sympy.SparseMatrix(1, 1, {(0,0): -sol})
-                )
-                constraint = c - sol
-        else:
-            logger.warning("..skipping %s", repr(constraint))
-            initial_constraints.append(constraint)
+        # if len(atoms) == 1:
+        #     c = atoms.pop()
+        #     logger.debug("Attempting to find inverse")
+        #     solns = list(sympy.solveset(constraint, c))
+        #
+        #     if len(solns) == 1:
+        #         idx = coordinates.index(c)
+        #         sol = solns.pop()
+        #
+        #         linear_op = linear_op.col_join(
+        #             sympy.SparseMatrix(1, linear_op.cols, {(0, idx): 1})
+        #         )
+        #         nonlinear_op = nonlinear_op.col_join(
+        #             sympy.SparseMatrix(1, 1, {(0,0): -sol})
+        #         )
+        #         constraint = c - sol
+        # else:
+        #     logger.warning("..skipping %s", repr(constraint))
+        #     initial_constraints.append(constraint)
         try:
             partials = [constraint.diff(c) for c in coordinates]
         except Exception as ex:

@@ -41,11 +41,11 @@
         }
       },
       "state_vars":{
-        "q_0":"Generalised Position"
+        "x_0":"Generalised Position"
       },
       "constitutive_relations": [
-        "q_0 - C * e_0",
-        "dq_0 - f_0"
+        "x_0 - C * e_0",
+        "dx_0 - f_0"
       ]
     },
     "I": {
@@ -56,7 +56,7 @@
         "0": null
       },
       "state_vars":{
-        "p_0":"Generalised Momentum"
+        "x_0":"Generalised Momentum"
       },
       "params": {
         "L": {
@@ -64,8 +64,8 @@
         }
       },
       "constitutive_relations": [
-        "p_0 - L*f_0",
-        "dp_0 - e_0"
+        "x_0 - L*f_0",
+        "dx_0 - e_0"
       ]
     },
     "Se": {
@@ -78,8 +78,13 @@
       "params": {
         "e": null
       },
+      "outputs": {
+        "f": null
+      },
       "constitutive_relations": [
-        "e_0 - e"
+        "e_0 - e",
+        "f_0 + f"
+
       ]
     },
     "Sf": {
@@ -92,8 +97,13 @@
       "params": {
         "f": null
       },
+      "outputs":{
+        "e": null
+      },
+
       "constitutive_relations": [
-        "f_0 + f"
+        "f_0 + f",
+        "e - e_0 "
       ]
     },
     "TF": {

@@ -145,8 +145,8 @@ def test_cat_rn():
     assert rn._species["ES"] == 2
     assert len(rn._reactions) == 2
 
-
 #TODO: fix when we rework parameters
+@pytest.mark.skip
 def test_nlin_se():
     rn = Reaction_Network(name="A+B to C", reactions="A+B=C")
     system = rn.as_network_model(normalised=True)

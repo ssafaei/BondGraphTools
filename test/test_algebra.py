@@ -7,7 +7,8 @@ import sympy
 import BondGraphTools as bgt
 from BondGraphTools import connect, new, expose
 from BondGraphTools.algebra import *
-from BondGraphTools.algebra import _generate_substitutions, _generate_cv_substitutions
+from BondGraphTools.algebra import (
+    _generate_substitutions, _generate_cv_substitutions, _make_coords, _generate_atomics_system)
 
 
 class TestParameter:
@@ -46,6 +47,21 @@ class TestBGVariables:
     #     dx = Derivative('dx_1')
     #
     #     assert x == Symbol('x_1')
+
+    def test_effort(self):
+
+        e = Effort("e_0")
+        e_test = sympy.Symbol("e_0")
+        coords = [e, e_test]
+        assert e is not e_test
+        # assert e == e_test
+        locals = {str(e): e}
+
+        eq = sympy.sympify("e_0 - 10", locals=locals)
+
+        assert eq.atoms() == {e, -10}
+        assert len(eq.atoms() - set(coords)) == 1
+
     def test_sort(self):
         syms = list(sympy.symbols("e_1,e_2,f_2,f_1,x_1,dx_1,u_1,y_1"))
 
@@ -68,13 +84,13 @@ class TestParseRelation:
         ## test 1
 
         eqn = 'e-R*f'
-        X =  sympy.symbols('e,f')
+        X = [Effort('e'), Flow('f')]
         with pytest.raises(SymbolicException):
             parse_relation(eqn, X)
         R = Parameter('R')
         P = [R]
 
-        _,_,  L, M, J = parse_relation(eqn, X, P)
+        L, M, J = parse_relation(eqn, X, P)
 
         assert L == {0:1, 1:-R}
         assert M == {}
@@ -84,7 +100,7 @@ class TestParseRelation:
         eqn = "f = dx"
         X = sympy.symbols('dx,e,f,x')
 
-        _,_, L, M, J = parse_relation(eqn,X)
+        L, M, J = parse_relation(eqn,X)
 
         assert L == {0:-1,2:1}
         assert M == {}
@@ -97,7 +113,7 @@ class TestParseRelation:
         V_t = Parameter('V_t')
         P = [Is, V_t]
 
-        _,_,  L, M, J = parse_relation(eqn, X, P)
+        L, M, J = parse_relation(eqn, X, P)
 
         assert L == {1:1}
         assert M == {0:-Is}
@@ -108,11 +124,100 @@ class TestParseRelation:
         eqn = "f_1 = k*exp(e_1) - k*exp(e_2)"
         X = sympy.symbols('e_1,f_1, e_2,f_2')
         k = Parameter('k')
-        _, _, L, M, J = parse_relation(eqn, X, [k])
+        L, M, J = parse_relation(eqn, X, [k])
 
         assert L == {1:  1}
         assert M == {0: k, 1: -k}
         assert J == [sympy.exp(X[2]), sympy.exp(X[0])]
+
+
+class TestGenerateCoords():
+
+    def test_C(self):
+
+        c = new("C", value=1)
+        coords, params, substitutions = _make_coords(c)
+
+        assert isinstance(coords, list)
+        assert isinstance(params, set)
+        assert isinstance(substitutions, set)
+
+        false_symbols = sympy.symbols("e_0, f_0, x_0, dx_0")
+        found_symbols = set()
+
+        assert substitutions == {(sympy.Symbol('C'), 1)}
+        assert len(coords) == 4
+        for x in coords:
+            assert x not in false_symbols
+            for y in false_symbols:
+                assert x != y
+                if x.name == y.name:
+                    found_symbols.add(x.name)
+
+        assert len(found_symbols) == 4
+
+    def test_c_control_var(self):
+
+        c = new("C", value=None)
+        coords, params, substitutions = _make_coords(c)
+
+        assert not substitutions
+        assert not params
+        assert len(coords) == 5
+
+        false_symbols = sympy.symbols("e_0, f_0, x_0, dx_0, C")
+
+        found_symbols = set()
+
+        for x in coords:
+            assert x not in false_symbols
+            for y in false_symbols:
+                assert x != y
+                if x.name == y.name:
+                    found_symbols.add(x.name)
+
+        assert len(found_symbols) == 5
+
+
+class TestGenerateSystem():
+
+    def test_r(self):
+        model = new("R", value=10)
+
+        # X -> local coordinates
+        # P -> Parameters
+        # L -> Linear Part of the matrix
+        # M -> Matrix for nonlinear terms
+        # JX - > nonlinear terms
+        X, P, L , M , JX = _generate_atomics_system(model)
+        assert len(X) == 2
+        assert not P
+        assert not M
+        assert not JX
+
+        assert L == {0: {0: 1, 1: -10}}
+        names = [str(x) for x in X]
+        assert names == ["e_0", "f_0"]
+
+    def test_c(self):
+        C = Parameter('C', value=10)
+        model = new("C", value=C)
+
+        X, P, L, M, JX = _generate_atomics_system(model)
+        assert len(X) == 4
+        assert P == {C}
+        assert not M
+        assert not JX
+
+        assert L == {
+            0: {0: 1, 2: -1},
+            1: {1: 1, 3:-C}
+        }
+        eqns = {
+            
+        }
+        names = [str(x) for x in X]
+        assert names == ["e_0", "f_0"]
 
 
 class TestMerge():

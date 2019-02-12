@@ -22,26 +22,33 @@ FONT_SM = 10
 __all__ = ["draw"]
 
 
-def draw(system):
+def draw(system, size=None):
     """
     Produces a network layout of the system.
 
     Args:
         system: The system to visualise
+        size: Tuple for the size of the figure (See `matplotlib.figure`)
 
     Returns:
         :obj:`matplotlib.Plot`
     """
     import matplotlib.pyplot as plt
 
-    fig = plt.figure(
-        figsize=(12, 9), dpi=80
-    )
+    if not size:
+        fig = plt.figure(
+            figsize=(12, 9), dpi=80
+        )
+    else:
+        fig = plt.figure(
+            figsize=size, dpi=80
+        )
     plt.ioff()
     ax = fig.gca()
     ax.set_aspect("equal")
     ax.set_title(f"{system.name}")
-    return system.view.draw(ax)
+    system.view.draw(ax)
+    return fig
 
 
 def _build_graph(system):

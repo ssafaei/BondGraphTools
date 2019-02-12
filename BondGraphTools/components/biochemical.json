@@ -15,11 +15,11 @@
         "T":{"description": "Temperature"}
       },
       "state_vars":{
-        "q_0":"Molar Quantity"
+        "n":"Molar Amount"
       },
       "constitutive_relations":[
-        "e_0 - R*T*log(k*q_0)",
-        "f_0 - dq_0"
+        "e_0 - R*T*log(k*n)",
+        "f_0 - dn"
       ]
     },
     "Re":{

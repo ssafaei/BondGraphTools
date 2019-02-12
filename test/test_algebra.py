@@ -209,15 +209,13 @@ class TestGenerateSystem():
         assert not M
         assert not JX
 
-        assert L == {
-            0: {0: 1, 2: -1},
-            1: {1: 1, 3:-C}
-        }
-        eqns = {
-            
-        }
+        assert len(L) == 2
+
+        for row in L.values():
+            assert row in ({0: 1, 2: -1}, {1: -C, 3: 1})
+
         names = [str(x) for x in X]
-        assert names == ["e_0", "f_0"]
+        assert names == ["dx_0", "e_0", "f_0", "x_0"]
 
 
 class TestMerge():
@@ -357,8 +355,8 @@ def test_build_relations():
     c = bgt.new("C")
     eqns = c._build_relations()
 
-    test_eqn = {sympy.sympify("q_0 - C*e_0"),
-                sympy.sympify("dq_0 - f_0")}
+    test_eqn = {sympy.sympify("x_0 - C*e_0"),
+                sympy.sympify("dx_0 - f_0")}
 
     assert set(eqns) == test_eqn
 

@@ -1,8 +1,10 @@
 """
 BondGraphTools
 ==============
-BondGraphTools is a python library for systems modelling and control using
-bond graphs.
+BondGraphTools is a python library for symbolic modelling and control of multi-physics
+systems using bond graphs. Bond graph modelling is a network base framework concerned
+with the distribution of energy and the flow of power through lumped-element or
+compartmental models of physical system.
 
 Package Documentation::
 

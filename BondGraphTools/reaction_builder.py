@@ -8,6 +8,7 @@ from collections import defaultdict
 import logging
 from math import log
 from .actions import connect, disconnect, new
+from .algebra import Parameter
 logger = logging.getLogger(__name__)
 
 __all__ = ["Reaction_Network"]
@@ -135,8 +136,10 @@ class Reaction_Network(object):
             param_dict = {"R": R, "T": self._T}
 
         for reaction_name, (bck_sto, fwd_sto, _, _) in self._reactions.items():
-            reaction = new("Re", library=LIBRARY,
-                           name=reaction_name, value=param_dict)
+            build_kwargs = {"r": Parameter(f"{reaction_name}")}
+            build_kwargs.update(param_dict)
+            reaction = new("Re", library=LIBRARY, name=reaction_name,
+                           value=build_kwargs)
             system.add(reaction)
             fwd_name = "".join(
                 list(fwd_sto.keys())
@@ -201,8 +204,10 @@ class Reaction_Network(object):
                 )
                 n_reactions = n_reactions-1
             else:
+                build_kwargs = {"k": Parameter(f"k_{{{species}}}")}
+                build_kwargs.update(param_dict)
                 this_species = new(
-                        "Ce", library=LIBRARY, name=species, value=param_dict
+                        "Ce", library=LIBRARY, name=species, value=build_kwargs
                 )
             system.add(this_species)
 

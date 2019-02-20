@@ -39,8 +39,6 @@ class Parameter(sympy.Symbol):
     """ Global parameter class.
 
     Global parameters are uniquely specified by name.
-
-
     """
     __slot__ = ['value']
     is_number = True
@@ -85,6 +83,9 @@ class Parameter(sympy.Symbol):
 
 
 class Variable(Symbol):
+    """
+
+    """
     order = 5
 
     def __hash__(self):
@@ -133,7 +134,21 @@ class Output(Symbol):
 
 
 def canonical_order(symbol):
-    prefix, index = symbol.name.split('_')
+    """
+    Canonical ordering of Energetic Variables.
+    Symbols of the form "x_0", "dx_3" are assigned a triple such that for any n, or for i > j
+        y_n > dx_n > e_i > f_i > e_j > x_n > u_n
+
+
+    Args:
+        symbol: The symbol from which t generate a key.
+
+    Returns: 3-tuple of int's
+    """
+    try:
+        prefix, index = symbol.name.split('_')
+    except ValueError:
+        return (4,0,0)
 
     if prefix == 'y':
         return 0, int(index), 0
@@ -141,7 +156,7 @@ def canonical_order(symbol):
         return 0, int(index), 1
     elif prefix == 'e':
         return 1, int(index), 0
-    elif prefix =='f':
+    elif prefix == 'f':
         return 1, int(index), 1
     elif prefix == 'x':
         return 2, int(index), 0
@@ -151,24 +166,23 @@ def canonical_order(symbol):
         return (3,0,0)
 
 
-def permutation(vector, key=None):
+def permutation(vector, key=None, return_sorted=False):
     """
     Args:
         vector: The vector to sort
         key: Optional sorting key (See: `sorted`)
 
-    Returns: list
+    Returns: (vector, list)
 
     For a given iterable, produces a list of tuples representing the
     permutation that maps sorts the list.
 
     Examples:
         >>> permutation([3,2,1])
-        outputs `[(0,2),(1,1),(2,0)]`
+        outputs `[1,2,3], [(0,2),(1,1),(2,0)]`
     """
-    return [
-        (vector.index(v), j) for (j,v) in enumerate(sorted(vector, key=key))
-    ]
+    sorted_vect = sorted(vector, key=key)
+    return sorted_vect, [(vector.index(v), j) for (j,v) in enumerate(sorted_vect)]
 
 
 DynamicalSystem = namedtuple("system", ["X", "P", "L", "M", "J"])
@@ -277,7 +291,10 @@ def parse_relation(
     return L, M, J
 
 
-def is_number(value):
+def _is_number(value):
+    """
+    Returns: True if the value is a number or a number-like vaiable
+    """
     if isinstance(value, (float, complex, int)):
         return True
     try:
@@ -308,7 +325,7 @@ def _make_coords(model):
             pass
         elif isinstance(value, Parameter):
             params.add(value)
-        elif is_number(value):
+        elif _is_number(value):
             substitutions.add((sympy.Symbol(param), value))
         else:
             raise NotImplementedError(f"Don't know how to treat {model.uri}.{param} "
@@ -347,10 +364,7 @@ def _generate_atomics_system(model):
     return coordinates, parameters, L, M, J
 
 
-
-
-
-def merge_systems(system, args):
+def merge_systems(system, *args):
     """
     Args:
         systems: An order lists of system to merge
@@ -363,23 +377,49 @@ def merge_systems(system, args):
     Recursive Implelemtation.
     We should do this in a loop instead, as it'll prolly be faster
     """
+
+    def merge(v1, v2):
+        if isinstance(v1, list) and isinstance(v2, list):
+            return v1 + v2
+        else:
+            raise NotImplementedError("Don't know how to merge")
+
     old_system, *new_args = args
+    (coord_1, coord_2), (params_1, params_2), (L_1, L_2), (M_1, M_2), (J_1, J_2) = zip(
+        system, old_system
+    )
 
-    (c1, c2), (p1,p2) = zip(system, old_system)
+    coordinates, permutation_map = permutation(
+        merge(coord_1, coord_2), key=canonical_order
+    )
 
+    parameters = params_1 | params_2
+    L = {}
+    M = {i: j for i, j in M_1.items()}
+    dim_X1 = len(coord_1)
+    dim_J1 = len(J_1)
+    J = merge(J_1, J_2)
 
+    # should be for row in
+    idx = 0
 
+    permute_forwards = {i: j for i, j in permutation_map}
+    for row in L_1:
+        L[idx] = {permute_forwards[col] for col in L_1[row]}
+        idx += 1
 
+    for row in L_2:
+        L[idx] = {permute_forwards[col + dim_X1] for col in L_2[row]}
+        M[idx] = {k + dim_J1 for k in M_2[row]}
+        idx += 1
 
+    new_system = coordinates, parameters, L, M, J
 
-
-
-
-
-
-
-
-
+    # tail recurse
+    if new_args:
+        return merge_systems(new_system, new_args)
+    else:
+        return new_system
 
 
 def extract_coefficients(equation: sympy.Expr,

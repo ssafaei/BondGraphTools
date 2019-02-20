@@ -73,7 +73,7 @@ class TestBGVariables:
         syms = list(sympy.symbols("e_1,e_2,f_2,f_1,x_1,dx_1,u_1,y_1"))
         s_symbols = list(sympy.symbols("y_1, dx_1, e_1,f_1, e_2,f_2,x_1,u_1"))
 
-        matrix = permutation(syms, key=canonical_order)
+        _, matrix = permutation(syms, key=canonical_order)
 
         for i,j in matrix:
             assert s_symbols[j] == syms[i]
@@ -219,12 +219,19 @@ class TestGenerateSystem():
 
 
 class TestMerge():
-    def test_1(self):
-        """
+    def test_merge_coords(self):
+        c = new("C")
+        c_1, p_1, subs_1 = _make_coords(c)
+        r = new("R")
+        c_2, p_2, subs_2 = _make_coords(r)
+        sys_1 = c_1, p_1, {}, {}, []
+        sys_2 = c_2, p_2, {}, {}, []
+        c_3, p_3, L, M, J = merge_systems(sys_1, sys_2)
 
+        assert False
 
-        """
-
+    def test_rc(self):
+        pass
 
 
 def test_extract_coeffs_lin():
@@ -360,6 +367,7 @@ def test_build_relations():
 
     assert set(eqns) == test_eqn
 
+
 def test_zero_junction_relations():
     r = bgt.new("R", value=sympy.symbols('r'))
     l = bgt.new("I", value=sympy.symbols('l'))
@@ -416,8 +424,8 @@ def test_build_model_fixed_cap():
     eqns = c.constitutive_relations
     assert len(eqns) == 2
 
-    test_eqn1 = sympy.sympify("q_0 - 0.001*e_0")
-    test_eqn2 = sympy.sympify("dq_0-f_0")
+    test_eqn1 = sympy.sympify("x_0 - 0.001*e_0")
+    test_eqn2 = sympy.sympify("dx_0-f_0")
 
     assert test_eqn1 in eqns
     assert test_eqn2 in eqns
@@ -436,7 +444,7 @@ def test_rlc_basis_vectors(rlc):
 def test_relations_iter():
     c = bgt.new("C", value=1)
     cp, = list(c.ports)
-    mappings = ({(c, 'q_0'): 0}, {cp: 0}, {})
+    mappings = ({(c, 'x_0'): 0}, {cp: 0}, {})
     coords = list(sympy.sympify("dx_0,e_0,f_0,x_0, 1"))
     relations = get_relations_iterator(c, mappings, coords)
 
@@ -479,10 +487,10 @@ def test_cv_relations():
     bg = bgt.new()
     bg.add([c, se, kcl, r])
 
-    connect(c,(kcl,kcl.non_inverting))
+    connect(c, (kcl,kcl.non_inverting))
     connect(r, (kcl, kcl.non_inverting))
     connect(se, (kcl, kcl.non_inverting))
-
+    print(bg.constitutive_relations)
     assert bg.constitutive_relations == [sympy.sympify("dx_0 + u_0 + x_0")]
 
 

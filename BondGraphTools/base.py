@@ -131,6 +131,7 @@ class BondGraphBase:
 
 Bond = namedtuple("Bond", ["tail", "head"])
 
+
 class Port(object):
     """
     Basic object for representing ports;
@@ -207,7 +208,7 @@ class PortManager:
         Makes available a (or the) port for use.
 
         Args:
-            port: (optional) The index or referece to the requested port.
+            port: (optional) The index or reference to the requested port.
 
         Returns: An instance of `Port`
 
@@ -388,8 +389,10 @@ class PortTemplate(object):
 
 
 class LabeledPort(Port):
-    def __init__(self,*args,name=None, **kwargs):
+    """See Also: `Port`, `LabeledPortManager`"""
+    def __init__(self, *args, name=None, **kwargs):
         self.name = name
+        """The name of this port"""
         Port.__init__(self, *args, **kwargs)
 
     def __hash__(self):
@@ -403,7 +406,11 @@ class LabeledPort(Port):
 
 
 class LabeledPortManager(PortManager):
+    """Interface for labelled ports
 
+    See Also: `PortManager`
+
+    """
     def __init__(self, ports=None):
         if ports:
             super().__init__(ports)

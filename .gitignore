@@ -6,6 +6,9 @@ doctrees/
 *.ipynb
 build/
 BondGraphTools.egg-info/
+<<<<<<< HEAD
 \.pytest_cache/
 .cache/
+=======
+>>>>>>> develop
 docs/html

@@ -68,3 +68,5 @@ from .compound import Composite
 from .sim_tools import simulate
 from .view import draw
 from .algebra import Parameter
+from .version import __version__ as version
+

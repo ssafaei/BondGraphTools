@@ -14,15 +14,23 @@ class PortHamiltonian(Atomic):
         $x, y, z$ or indexed notations thereof.
 
     Variables in the reserved list are taken to be stateful.
-    $x$,$y$,$z$ are taken to be in some sense cannonical co-ordiantes
-    of some differntiable manifold. Where $p$ is taken to be in the
-    co-tangent space in the usual manner.
-
 
     Args:
         hamiltonian (str): The Hamiltonian storage function from which to
                            generate the component.
 
+    Usage:
+        Port Hamiltonians can be created using the `new` command.
+        For example::
+
+            build_args = {"hamiltonian": "w*x^2/2",
+                          "params": {'w': 2}
+            ph = new("PH", value=build_args)
+
+        creates a new port hamiltonian component `ph`, which has one port
+        defined by the relation
+        $$\dot{x}_i = f_i, \qquad e_i = \frac{\partial H}{\partial x_i}$$
+        where $H = w*x^2$,.
 
     See Also: Atomic
     """
@@ -36,10 +44,11 @@ class PortHamiltonian(Atomic):
         kwargs["state_vars"] = x
 
         if "params" not in kwargs:
-            kwargs["params"] = p
+            kwargs["params"] = {}
         else:
             for p in params:
-                if p not in kwargs["params"] and str(p) not in kwargs["params"]:
+                if p not in kwargs["params"] \
+                        and str(p) not in kwargs["params"]:
                     kwargs["params"][str(p)] = None
         kwargs["ports"] = ports
         # for each state variable, assign
@@ -78,9 +87,6 @@ class PortHamiltonian(Atomic):
             relations.append(str(Hx.diff(q).simplify() - sp.S(f"e_{i}")))
             relations.append(f"d{q} - f_{i}")
 
-        ports = {i:None for i in range(len(state_vars))}
+        ports = {i: None for i in range(len(state_vars))}
 
         return relations, state_vars, params, ports
-
-
-

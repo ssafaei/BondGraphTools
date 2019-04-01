@@ -5,7 +5,6 @@ from collections import namedtuple
 
 import logging
 import sympy
-
 from sympy import Symbol, NumberSymbol, Number
 
 from .exceptions import SymbolicException
@@ -83,7 +82,10 @@ class Parameter(sympy.Symbol):
 
 
 class Variable(Symbol):
-    """
+    """Local Variable Class.
+
+    Local variables are symbolic variables like $x_0$ that are associated with
+    a particular chart.
 
     """
     order = 5
@@ -166,7 +168,7 @@ def canonical_order(symbol):
         return (3,0,0)
 
 
-def permutation(vector, key=None, return_sorted=False):
+def permutation(vector, key=None, in_place=False):
     """
     Args:
         vector: The vector to sort
@@ -362,6 +364,70 @@ def _generate_atomics_system(model):
             M[i] = {(index + offset): coeff for index, coeff in M_1.items()}
 
     return coordinates, parameters, L, M, J
+
+
+def merge_coordinates(*pairs):
+    """Merges coordinate spaces and parameter spaces together
+
+    This function takes a list of coordinates and parameters and builds a new
+    coordinate space by simply taking the direct of the relavent spaces and
+    returns the result along with a series of projection functions from the
+    new space back to the old space.
+
+    Args:
+        *pairs: iterable of state space and parameter space pairs.
+
+    Returns:
+        tuple, list of functions.
+
+    """
+
+    new_coordinates = []
+    new_parameters = []
+    projection_data = []
+    projectors = []
+    ProjectionData = namedtuple("ProjectionData", [
+        "p_inverse",
+        "x_offset",
+        "x_len"
+    ])
+
+    for index, (coords, params) in enumerate(pairs):
+
+        p_data = ProjectionData(
+            p_inverse={},
+            x_offset=len(new_coordinates),
+            x_len=len(coords)
+        )
+        # Parameters can be shared; needs to be many-to-one
+        # So we need to check if they're in the parameter set before adding
+        # them
+        for old_p_index, param in enumerate(params):
+            try:
+                new_p_index = new_parameters.index(param)
+            except ValueError:
+                new_p_index = len(new_parameters)
+                new_parameters.append(param)
+
+            p_data.p_inverse.update({new_p_index: old_p_index})
+
+        # coordinates just get stacked
+        new_coordinates += coords
+
+        projection_data.append(p_data)
+
+    new_coordinates, permuation_map = permutation(
+        new_coordinates, canonical_order
+    )
+    # the permutation map that $x_i -> x_j$ then (i,j) in p_map^T
+    
+
+
+
+    return (new_coordinates, new_parameters), projectors
+
+
+
 
 
 def merge_systems(system, *args):

@@ -224,11 +224,15 @@ class TestMerge():
         c_1, p_1, subs_1 = _make_coords(c)
         r = new("R")
         c_2, p_2, subs_2 = _make_coords(r)
-        sys_1 = c_1, p_1, {}, {}, []
-        sys_2 = c_2, p_2, {}, {}, []
-        c_3, p_3, L, M, J = merge_systems(sys_1, sys_2)
 
-        assert False
+        (c, p), (pi_1, pi_2) = merge_coordinates(
+            (c_1,p_1), (c_2,p_2),
+        )
+
+        assert len(c) == len(c_1) + len(c_2)
+        assert pi_1(c, p) == (c_1, p_1)
+        assert pi_2(c, p) == (c_2, p_2)
+
 
     def test_rc(self):
         pass

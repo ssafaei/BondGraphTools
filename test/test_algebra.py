@@ -78,8 +78,8 @@ class TestBGVariables:
         for i,j in matrix:
             assert s_symbols[j] == syms[i]
 
-class TestParseRelation:
 
+class TestParseRelation:
     def test_basic(self):
         ## test 1
 
@@ -132,7 +132,6 @@ class TestParseRelation:
 
 
 class TestGenerateCoords():
-
     def test_C(self):
 
         c = new("C", value=1)
@@ -157,7 +156,6 @@ class TestGenerateCoords():
         assert len(found_symbols) == 4
 
     def test_c_control_var(self):
-
         c = new("C", value=None)
         coords, params, substitutions = _make_coords(c)
 
@@ -220,22 +218,37 @@ class TestGenerateSystem():
 
 class TestMerge():
     def test_merge_coords(self):
-        c = new("C")
+        c = new("C", value=Parameter('C'))
         c_1, p_1, subs_1 = _make_coords(c)
-        r = new("R")
+        r = new("R", value=Parameter('R'))
         c_2, p_2, subs_2 = _make_coords(r)
 
-        (c, p), (pi_1, pi_2) = merge_coordinates(
-            (c_1,p_1), (c_2,p_2),
+        assert len(c_1) == 4
+        assert len(c_2) == 2
+
+        (c, p), maps = merge_coordinates(
+            (c_1,p_1), (c_2,p_2)
         )
 
         assert len(c) == len(c_1) + len(c_2)
-        assert pi_1(c, p) == (c_1, p_1)
-        assert pi_2(c, p) == (c_2, p_2)
+        assert len(p) == len(p_1) + len(p_2)
+        assert maps == [({0:0, 1:1, 2:2, 5:3}, {0:0}), ({3:0, 4:1}, {1:0})]
 
+    def test_common_param(self):
 
-    def test_rc(self):
-        pass
+        p = Parameter('C')
+        C = new("C", value=p)
+        c_1, p_1, subs_1 = _make_coords(C)
+        C2 = new("C", value=p)
+        c_2, p_2, subs_1 = _make_coords(C2)
+
+        assert len(c_1) == len(c_2) == 4
+        assert len(p_1) == len(p_2) == 1
+        (c, p), maps = merge_coordinates(
+            (c_1,p_1), (c_2,p_2)
+        )
+
+        assert len(p) == 1
 
 
 def test_extract_coeffs_lin():

@@ -5,8 +5,8 @@ from collections import namedtuple
 
 import logging
 import sympy
-from sympy import Symbol, NumberSymbol, Number
-
+from sympy import Symbol, NumberSymbol, Number, Dummy
+from orderedset import OrderedSet
 from .exceptions import SymbolicException
 
 logger = logging.getLogger(__name__)
@@ -93,10 +93,6 @@ class Variable(Symbol):
     def __hash__(self):
         return super().__hash__()
 
-    def __eq__(self, other):
-        return super().__eq__(other)
-
-
 class DVariable(Symbol):
     order = 2
 
@@ -110,9 +106,9 @@ class DVariable(Symbol):
 
 class Effort(Symbol):
     order = 3
+
     def __hash__(self):
         return super().__hash__()
-
 
 class Flow(Symbol):
     order = 4
@@ -127,12 +123,14 @@ class Control(Symbol):
     def __hash__(self):
         return super().__hash__()
 
-
 class Output(Symbol):
     order = 1
 
     def __hash__(self):
         return super().__hash__()
+
+    def __eq__(self, other):
+        return self is other
 
 
 def canonical_order(symbol):
@@ -371,34 +369,64 @@ def merge_coordinates(*pairs):
 
     This function takes a list of coordinates and parameters and builds a new
     coordinate space by simply taking the direct of the relavent spaces and
-    returns the result along with a series of projection functions from the
-    new space back to the old space.
+    returns the result along with a list of inverse maps (dictionaries)
+    identifying how to get get back
+
+    For example::
+
+        c_pair = [dx_0, e_0, f_0, x_0], [C]
+        r_pair = [e_0, f_0], [R]
+
+        new_pair, maps = merge_coordinates(c_pair, r_pair)
+
+    would return a new coordinate system::
+
+        new_pair == [dx_0, e_0, f_0, e_1, f_1, x_0], ['C','R']
+
+    with maps::
+
+        maps == ({0:0, 1:1, 2:2, 5:3}, {0:0}), ({3:0, 4:1}, {1:0})
+
+    which identifies how the index of the new coordinate system (the keys)
+    relate to the index of the old coordinate system (the values)
+    for both the state space (first of the pair) and the parameter space
+    (second of the pair).
 
     Args:
         *pairs: iterable of state space and parameter space pairs.
 
     Returns:
-        tuple, list of functions.
+        tuple, list of tuples.
 
     """
 
     new_coordinates = []
+    counters = {
+        'dx': 0,
+        'x': 0,
+        'e': 0,
+        'f': 0,
+        'y':0,
+        'u':0,
+    }
+
+    factories= {
+        'dx': lambda name: DVariable(name[1:]),
+        'x': Variable,
+        'e': Effort,
+        'f': Flow,
+        'y': Output,
+        'u': Control,
+    }
     new_parameters = []
-    projection_data = []
-    projectors = []
-    ProjectionData = namedtuple("ProjectionData", [
-        "p_inverse",
-        "x_offset",
-        "x_len"
-    ])
+
+    x_projectors = {}
+    p_projectors ={}
 
     for index, (coords, params) in enumerate(pairs):
+        x_inverse = {}
+        p_inverse = {}
 
-        p_data = ProjectionData(
-            p_inverse={},
-            x_offset=len(new_coordinates),
-            x_len=len(coords)
-        )
         # Parameters can be shared; needs to be many-to-one
         # So we need to check if they're in the parameter set before adding
         # them
@@ -408,26 +436,32 @@ def merge_coordinates(*pairs):
             except ValueError:
                 new_p_index = len(new_parameters)
                 new_parameters.append(param)
+            p_inverse.update({new_p_index: old_p_index})
 
-            p_data.p_inverse.update({new_p_index: old_p_index})
+        for idx, x in enumerate(coords):
+            new_idx = len(new_coordinates)
+            x_inverse.update({new_idx: idx})
+            x_type, _ = str(x).split('_')
+            name = f"{x_type}_{counters[x_type]}"
+            counters[x_type] += 1
+            new_coordinates.append(factories[x_type](name))
 
-        # coordinates just get stacked
-        new_coordinates += coords
-
-        projection_data.append(p_data)
+        p_projectors[index] = p_inverse
+        x_projectors[index] = x_inverse
 
     new_coordinates, permuation_map = permutation(
         new_coordinates, canonical_order
     )
     # the permutation map that $x_i -> x_j$ then (i,j) in p_map^T
-    
+    permuation = {i: j for i,j in permuation_map}
+    print(x_projectors)
+    for index in x_projectors:
+        x_projectors[index] = {permuation[i]:j for i,j in x_projectors[index].items()}
 
-
-
+    projectors = [
+        (x_projectors[i], p_projectors[i]) for i in x_projectors
+    ]
     return (new_coordinates, new_parameters), projectors
-
-
-
 
 
 def merge_systems(system, *args):

@@ -93,6 +93,7 @@ class Variable(Symbol):
     def __hash__(self):
         return super().__hash__()
 
+
 class DVariable(Symbol):
     order = 2
 
@@ -110,6 +111,7 @@ class Effort(Symbol):
     def __hash__(self):
         return super().__hash__()
 
+
 class Flow(Symbol):
     order = 4
 
@@ -122,6 +124,7 @@ class Control(Symbol):
 
     def __hash__(self):
         return super().__hash__()
+
 
 class Output(Symbol):
     order = 1
@@ -339,10 +342,10 @@ def _generate_atomics_system(model):
           model: Instance of `BondGraphBase` from which to generate matrix equation.
 
     Returns:
+        tuple $(coordinates, parameters, L, M, J)$
 
-        X, L, M and J such that
+    Such that $L_pX + M_p*J(X) = 0$.
 
-        LX + M*J(X) = 0
     """
     # coordinates is list
     # parameters is a set
@@ -464,7 +467,7 @@ def merge_coordinates(*pairs):
     return (new_coordinates, new_parameters), projectors
 
 
-def merge_systems(system, *args):
+def merge_systems(*systems):
     """
     Args:
         systems: An order lists of system to merge
@@ -472,60 +475,63 @@ def merge_systems(system, *args):
     Returns:
         A new system, and an inverse mapping.
 
-    Merges a set of systems together.
+    See Also:
+        _generate_atomics_system
 
-    Recursive Implelemtation.
-    We should do this in a loop instead, as it'll prolly be faster
+    Merges a set of systems together. Each system should be of the form
+    `X,P,L,M,J` where
+    - `X` is a `list` of local cordinates
+    - `P` is a `set` of local parameters
+    - `L` is a (column key) dictionary representation of the linear matrix
+    - `M` is a (column key) dictionary representation of the nonlinear
+      contributions
+    - 'J' is nonlinear atomic terms.
+
+    The resulting merged system is of the same form.
+
     """
+    L_out = {}
+    M_out = {}
+    J_out = []
+    row_index = 0
 
-    def merge(v1, v2):
-        if isinstance(v1, list) and isinstance(v2, list):
-            return v1 + v2
-        else:
-            raise NotImplementedError("Don't know how to merge")
+    coord_pairs = []
 
-    old_system, *new_args = args
-    (coord_1, coord_2), (params_1, params_2), (L_1, L_2), (M_1, M_2), (J_1, J_2) = zip(
-        system, old_system
-    )
+    for x, p, _, _, _ in systems:
+        coord_pairs.append((x, p))
 
-    coordinates, permutation_map = permutation(
-        merge(coord_1, coord_2), key=canonical_order
-    )
+    (coords, params), maps = merge_coordinates(*coord_pairs)
 
-    parameters = params_1 | params_2
-    L = {}
-    M = {i: j for i, j in M_1.items()}
-    dim_X1 = len(coord_1)
-    dim_J1 = len(J_1)
-    J = merge(J_1, J_2)
+    for (new_to_old,_),  (X, P, L, M, J) in zip(maps, systems):
+        old_to_new = {j:i for i, j in new_to_old.items()}
 
-    # should be for row in
-    idx = 0
+        # Substitute for the nonlinear terms.
+        if J:
+            intermediates = {x: Dummy(f"i_{i}") for i, x in enumerate(X)}
 
-    permute_forwards = {i: j for i, j in permutation_map}
-    for row in L_1:
-        L[idx] = {permute_forwards[col] for col in L_1[row]}
-        idx += 1
+            J_temp = [j_i.subs(intermediates.items()) for j_i in J]
+            J_offset = len(J_out)
+            J_final = [(intermediates[i], coords[old_to_new[i]])
+                       for i in range(len(intermediates))]
+            J_out += [j_i.subs(J_final) for j_i in J_temp]
 
-    for row in L_2:
-        L[idx] = {permute_forwards[col + dim_X1] for col in L_2[row]}
-        M[idx] = {k + dim_J1 for k in M_2[row]}
-        idx += 1
+        for i in L:
 
-    new_system = coordinates, parameters, L, M, J
+            L_out[row_index] = {
+                old_to_new[k]: v for k, v in L[i].items()
+            }
+            if M:
+                M_out[row_index] = {(k + J_offset): v for k, v in M[i].items()}
+            row_index += 1
 
-    # tail recurse
-    if new_args:
-        return merge_systems(new_system, new_args)
-    else:
-        return new_system
+    return coords, params, L_out, M_out, J_out
 
 
 def extract_coefficients(equation: sympy.Expr,
                          local_map: dict,
                          global_coords: list) -> tuple:
     """
+    --- Depreciated ---
 
     Args:
         equation: The equation in local coordinates.
@@ -598,7 +604,7 @@ def extract_coefficients(equation: sympy.Expr,
 
 
 def _generate_substitutions(linear_op, nonlinear_op, constraints, coords, size_tup):
-
+    """--deprecated-"""
     # Lx + F(x) = 0 =>  Ix = (I - L)x - F(x) = Rx - F(x)
     # Since L is in smith normal form (rref and square)
     # If (Rx)_{ii} = 0, and F(x)_i doesn't depend upon x_i
@@ -638,7 +644,7 @@ def _process_constraints(linear_op,
                          constraints,
                          coordinates,
                          size_tup):
-
+    """--deprecated-"""
     initial_constraints = []
     ss_size, js_size, cv_size, n = size_tup
     offset = 2 * js_size + ss_size
@@ -741,6 +747,7 @@ def _process_constraints(linear_op,
 
 
 def _generate_cv_substitutions(subs_pairs, mappins, coords):
+    """--deprecated-"""
     state_map, port_map, control_map = mappins
     ss_size = len(state_map)
 
@@ -767,6 +774,8 @@ def _generate_cv_substitutions(subs_pairs, mappins, coords):
 def reduce_model(linear_op, nonlinear_op, coordinates, size_tuple,
                  control_vars=None):
     """
+    --deprecate--
+
     Simplifies the given system equation.
 
     Args:
@@ -1112,6 +1121,7 @@ def adjacency_to_dict(nodes, edges, offset=0):
 
 
 def inverse_coord_maps(tangent_space, port_space, control_space):
+    """--deprecated-"""
     inverse_tm = {
         coord_id: index for index, coord_id
         in enumerate(tangent_space.values())
@@ -1138,6 +1148,7 @@ def inverse_coord_maps(tangent_space, port_space, control_space):
 
 
 def get_relations_iterator(component, mappings, coordinates, io_map=None):
+    """--deprecated-"""
     local_tm, local_js, local_cv = component.basis_vectors
     inv_tm, inv_js, inv_cv = mappings
 

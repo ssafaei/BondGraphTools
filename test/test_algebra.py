@@ -250,6 +250,30 @@ class TestMerge():
 
         assert len(p) == 1
 
+    def test_merge_systems(self):
+        c = new("C", value=Parameter('C'))
+        r = new("R", value=Parameter('R'))
+        system_1 = _generate_atomics_system(c)
+        system_2 = _generate_atomics_system(r)
+
+        coords, params, L, M , J = merge_systems(system_1, system_2)
+
+        assert len(coords) == 6
+        assert len(params) == 2
+        assert not M
+        assert not J
+        assert L == {
+            0: {1: -params[0], 5: 1},
+            1: {0: 1, 2: -1},
+            2: {3: 1, 4: -params[1]}
+        }
+
+    def test_merge_nonlinear_sysmtes(self):
+        pass
+    def test_merge_control_variables(self):
+        pass
+
+
 
 def test_extract_coeffs_lin():
     eqn = sympy.sympify("y -2*x -3")

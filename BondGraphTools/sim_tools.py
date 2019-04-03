@@ -9,7 +9,7 @@ from sympy.core import SympifyError
 from scipy.optimize import broyden1
 
 from .exceptions import ModelException, SolverException
-from .algebra import evaluate
+from .model_reduction import evaluate
 logger = logging.getLogger(__name__)
 
 

@@ -9,8 +9,8 @@ from orderedset import OrderedSet
 from .base import *
 from .exceptions import *
 from .view import GraphLayout
-from .algebra import adjacency_to_dict, \
-    inverse_coord_maps, reduce_model, get_relations_iterator
+from .model_reduction import adjacency_to_dict
+from .algebra import inverse_coord_maps, reduce_model, get_relations_iterator
 logger = logging.getLogger(__name__)
 
 __all__ = [

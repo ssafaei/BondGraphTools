@@ -6,9 +6,16 @@ logging.basicConfig(level=logging.INFO)
 import sympy
 import BondGraphTools as bgt
 from BondGraphTools import connect, new, expose
-from BondGraphTools.algebra import *
-from BondGraphTools.algebra import (
-    _generate_substitutions, _generate_cv_substitutions, _make_coords, _generate_atomics_system)
+from BondGraphTools.model_reduction import *
+from BondGraphTools.model_reduction.model_reduction import (_make_coords,
+    _generate_atomics_system)
+#################
+# To do:
+# 1. Support parameters that are functions of other parameters.
+#
+#
+#
+
 
 
 class TestParameter:
@@ -38,6 +45,16 @@ class TestParameter:
         assert P.value == sympy.Number(10)
         assert P != K
         assert P != 'K'
+
+    def test_parameter_with_symbolic_value(self):
+        v = sympy.sympify("exp(a)")
+        P = Parameter('P', value=v)
+
+        assert P.value == v
+        assert P.atoms() == {P}
+
+        #
+        # assert (sympy.log(P).simplify()) == sympy.Symbol('a')
 
 
 class TestBGVariables:
@@ -177,7 +194,7 @@ class TestGenerateCoords():
         assert len(found_symbols) == 5
 
 
-class TestGenerateSystem():
+class TestGenerateSystem:
 
     def test_r(self):
         model = new("R", value=10)
@@ -232,7 +249,7 @@ class TestMerge():
 
         assert len(c) == len(c_1) + len(c_2)
         assert len(p) == len(p_1) + len(p_2)
-        assert maps == [({0:0, 1:1, 2:2, 5:3}, {0:0}), ({3:0, 4:1}, {1:0})]
+        assert maps == [{0:0, 1:1, 2:2, 5:3}, {3:0, 4:1}]
 
     def test_common_param(self):
 
@@ -251,28 +268,38 @@ class TestMerge():
         assert len(p) == 1
 
     def test_merge_systems(self):
-        c = new("C", value=Parameter('C'))
-        r = new("R", value=Parameter('R'))
+        p1 = Parameter('C')
+        p2 = Parameter('R')
+        c = new("C", value=p1)
+        r = new("R", value=p2)
         system_1 = _generate_atomics_system(c)
         system_2 = _generate_atomics_system(r)
 
-        coords, params, L, M , J = merge_systems(system_1, system_2)
+        coords, params, L, M, J, maps = merge_systems(system_1, system_2)
 
         assert len(coords) == 6
         assert len(params) == 2
         assert not M
         assert not J
         assert L == {
-            0: {1: -params[0], 5: 1},
+            0: {1: -p1, 5: 1},
             1: {0: 1, 2: -1},
-            2: {3: 1, 4: -params[1]}
+            2: {3: 1, 4: -p2}
         }
 
-    def test_merge_nonlinear_sysmtes(self):
-        pass
-    def test_merge_control_variables(self):
-        pass
+    def test_merge_nonlinear_system(self):
+        P = Parameter('P')
+        # K = sympy.Symbol('k')
+        K = 1
+        Ce = new("Ce", library="BioChem", value={"R": P, "T": 1, "k": K})
+        Re = new("Re", library="BioChem", value={"R": P, "T": 1, "r": None})
+        system_1 = _generate_atomics_system(Ce)
+        system_2 = _generate_atomics_system(Re)
 
+        coords, params, L, M, J, maps = merge_systems(system_1, system_2)
+
+        assert str(coords) == '[dx_0, e_0, f_0, e_1, f_1, e_2, f_2, x_0, u_0]'
+        assert params == {P}
 
 
 def test_extract_coeffs_lin():

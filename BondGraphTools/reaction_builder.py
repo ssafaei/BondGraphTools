@@ -8,7 +8,7 @@ from collections import defaultdict
 import logging
 from math import log
 from .actions import connect, disconnect, new
-from .algebra import Parameter
+from .model_reduction import Parameter
 logger = logging.getLogger(__name__)
 
 __all__ = ["Reaction_Network"]

@@ -5,7 +5,7 @@ import sympy
 import BondGraphTools as bgt
 from BondGraphTools import connect
 from BondGraphTools.exceptions import InvalidPortException
-from BondGraphTools.algebra import extract_coefficients, inverse_coord_maps,get_relations_iterator
+from BondGraphTools.model_reduction import extract_coefficients, inverse_coord_maps,get_relations_iterator
 from BondGraphTools.reaction_builder import Reaction_Network
 
 import logging

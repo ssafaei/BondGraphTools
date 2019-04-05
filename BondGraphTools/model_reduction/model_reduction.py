@@ -1,12 +1,13 @@
+
 import logging
+logger = logging.getLogger(__name__)
 
 import sympy
 
 from .algebra import *
 from .symbols import *
 from ..exceptions import SymbolicException
-
-logger = logging.getLogger(__name__)
+# from ..atomic import Atomic
 
 
 def parse_relation(
@@ -86,27 +87,30 @@ def parse_relation(
 
     remainder = remainder.expand()
 
-    if remainder.is_Mul:
-        terms = [remainder]
+    if remainder.is_Add:
+        terms = remainder.args
     elif remainder.is_zero:
         terms = []
     else:
-        terms = remainder.args
-
+        terms = [remainder]
+    logger.info("Nonlinear terms %s are %s", type(terms), terms)
     for term in terms:
         coeff = sympy.Number("1")
         nonlinearity = sympy.Number("1")
-        logger.info("Checking factors %s\n", term.args)
-        for factor in term.args:
+        logger.info("Checking factors %s\n", term.as_coeff_mul())
+
+        for factor in flatten(term.as_coeff_mul()):
             if factor.atoms() & set(coordinates):
                 nonlinearity = factor * nonlinearity
             else:
                 coeff = factor * coeff
+        logger.info("Coefficients: %s of nonlinearity: %s", coeff, nonlinearity)
         try:
             index = J.index(nonlinearity)
         except ValueError:
             index = len(J)
             J.append(nonlinearity)
+
         M[index] = coeff
 
     return L, M, J
@@ -131,7 +135,7 @@ def _make_coords(model):
     derivatives = [DVariable(x) for x in state]
 
     inputs = [Control(u) for u in model.control_vars]
-    outputs = []
+    outputs = [Output(y) for y in model.output_vars]
 
     ports = []
     for p in model.ports:
@@ -145,7 +149,7 @@ def _make_coords(model):
     for param in model.params:
         value = model.params[param]
 
-        if not value or param in model.control_vars:
+        if not value or param in model.control_vars or param in model.output_vars:
             continue
         elif isinstance(value, dict):
             try:
@@ -353,6 +357,67 @@ def merge_systems(*systems):
             row_index += 1
 
     return coords, params, L_out, M_out, J_out, maps
+
+
+def generate_system_from(model):
+    """Generates an implicit dynamical system from an instance of
+    `BondGraphBase`.
+
+    Args:
+        model:
+
+    Returns:
+
+    """
+    try:
+        systems = {
+            component: generate_system_from(component)
+            for component in model.components
+        }
+    except AttributeError:
+        return _generate_atomics_system(model)
+
+    X, P, L, M, J, maps = merge_systems(*systems.values())
+
+    map_dictionary = {c: M for c, M in zip(systems.keys(), maps)}
+
+    # Add the bonds:
+    for head_port, tail_port in model.bonds:
+        # 1. Get the respective systems
+        X_head = systems[head_port.component][0]
+        head_to_local_map = {
+            j: i for i, j in map_dictionary[head_port.component].items()
+        }
+
+        X_tail = systems[tail_port.component][0]
+
+        tail_to_local_map = {
+            j: i for i, j in map_dictionary[tail_port.component].items()
+        }
+        # 2. Find the respetive pairs of coorindates.
+        e_1, = [tail_to_local_map[i] for i, x in enumerate(X_tail)
+                if x.index == tail_port.index and isinstance(x, Effort)]
+        f_1, = [tail_to_local_map[i] for i, x in enumerate(X_tail)
+                if x.index == tail_port.index and isinstance(x, Flow)]
+        e_2, = [head_to_local_map[i] for i, x in enumerate(X_head)
+                if x.index == head_port.index and isinstance(x, Effort)]
+        f_2, = [head_to_local_map[i] for i, x in enumerate(X_head)
+                if x.index == head_port.index and isinstance(x, Flow)]
+
+        # 2. add as a row in the linear matrix.
+
+        L.update({
+            len(L): {e_1: 1, e_2: -1},
+            (len(L)+1): {f_1: 1, f_2: 1}}
+        )
+
+    return X, P, L, M, J
+
+
+
+
+
+
 
 
 

@@ -64,6 +64,19 @@ class Variable(sympy.Symbol):
     def __hash__(self):
         return super().__hash__()
 
+    def __new__(cls, name=None, index=None, **kwargs):
+        if not name and isinstance(index, int):
+            obj = super().__new__(cls, f"{cls.default_prefix}_{index}", **kwargs)
+            obj.index = index
+        else:
+            try:
+                _, idx = name.split('_')
+                obj = super().__new__(cls, name, **kwargs)
+                obj.index = int(idx)
+            except ValueError:
+                obj = super().__new__(cls, name, **kwargs)
+        return obj
+
 
 class DVariable(sympy.Symbol):
     order = 2
@@ -72,12 +85,26 @@ class DVariable(sympy.Symbol):
     def __hash__(self):
         return super().__hash__()
 
-    def __new__(cls, name, **assumptions):
-
-        if isinstance(name, str):
-            obj = super().__new__(cls, f"{name}", **assumptions)
+    def __new__(cls, name=None, index=None, **kwargs):
+        if not name and isinstance(index, int):
+            obj = super().__new__(cls, f"{cls.default_prefix}_{index}", **kwargs)
+            obj.index = index
         elif isinstance(name, Variable):
-            obj = super().__new__(cls, f"d{str(name)}", **assumptions)
+            try:
+                name_str, _ = name.name.split("_")
+                obj = super().__new__(cls,
+                                      f"d{name_str}_{name.index}",
+                                      **kwargs)
+                obj.index = name.index
+            except AttributeError:
+                obj = super().__new__(cls, f"d{name.name}")
+        else:
+            try:
+                _, idx = name.split('_')
+                obj = super().__new__(cls, name, **kwargs)
+                obj.index = int(idx)
+            except ValueError:
+                obj = super().__new__(cls, name, **kwargs)
         return obj
 
 
@@ -88,6 +115,19 @@ class Effort(sympy.Symbol):
     def __hash__(self):
         return super().__hash__()
 
+    def __new__(cls, name=None, index=None, **kwargs):
+        if not name and isinstance(index, int):
+            obj = super().__new__(cls, f"{cls.default_prefix}_{index}", **kwargs)
+            obj.index = index
+        else:
+            try:
+                _, idx = name.split('_')
+                obj = super().__new__(cls, name, **kwargs)
+                obj.index = int(idx)
+            except ValueError:
+                obj = super().__new__(cls, name, **kwargs)
+        return obj
+
 
 class Flow(sympy.Symbol):
     order = 4
@@ -96,6 +136,19 @@ class Flow(sympy.Symbol):
     def __hash__(self):
         return super().__hash__()
 
+    def __new__(cls, name=None, index=None, **kwargs):
+        if not name and isinstance(index, int):
+            obj = super().__new__(cls, f"{cls.default_prefix}_{index}", **kwargs)
+            obj.index = index
+        else:
+            try:
+                _, idx = name.split('_')
+                obj = super().__new__(cls, name, **kwargs)
+                obj.index = int(idx)
+            except ValueError:
+                obj = super().__new__(cls, name, **kwargs)
+        return obj
+
 
 class Control(sympy.Symbol):
     order = 6
@@ -103,6 +156,18 @@ class Control(sympy.Symbol):
 
     def __hash__(self):
         return super().__hash__()
+    def __new__(cls, name=None, index=None, **kwargs):
+        if not name and isinstance(index, int):
+            obj = super().__new__(cls, f"{cls.default_prefix}_{index}", **kwargs)
+            obj.index = index
+        else:
+            try:
+                _, idx = name.split('_')
+                obj = super().__new__(cls, name, **kwargs)
+                obj.index = int(idx)
+            except ValueError:
+                obj = super().__new__(cls, name, **kwargs)
+        return obj
 
 
 class Output(sympy.Symbol):
@@ -114,6 +179,18 @@ class Output(sympy.Symbol):
 
     def __eq__(self, other):
         return self is other
+    def __new__(cls, name=None, index=None, **kwargs):
+        if not name and isinstance(index, int):
+            obj = super().__new__(cls, f"{cls.default_prefix}_{index}", **kwargs)
+            obj.index = index
+        else:
+            try:
+                _, idx = name.split('_')
+                obj = super().__new__(cls, name, **kwargs)
+                obj.index = int(idx)
+            except ValueError:
+                obj = super().__new__(cls, name, **kwargs)
+        return obj
 
 
 def canonical_order(symbol):

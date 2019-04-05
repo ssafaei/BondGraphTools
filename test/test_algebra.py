@@ -17,11 +17,9 @@ from BondGraphTools.model_reduction.model_reduction import (_make_coords,
 #
 
 
-
 class TestParameter:
 
     def test_parameter_creation(self):
-
         P = Parameter("K")
         P2 = Parameter("K", value=10)
         k = Parameter("k")
@@ -147,6 +145,43 @@ class TestParseRelation:
         assert M == {0: k, 1: -k}
         assert J == [sympy.exp(X[2]), sympy.exp(X[0])]
 
+    def test_constant_function(self):
+
+        eqn = "x_0 - 1"
+        X = [Variable(index=0)]
+        L, M, J = parse_relation(eqn, X)
+        assert L == {0:1}
+        assert M == {0:-1}
+        assert J ==[1]
+
+    def test_nonlinear_parameter(self):
+        eqn = "e_0 - exp(mu)*f_0"
+        P = Parameter('mu')
+        X = [Effort(index=0), Flow(index=0)]
+        L, M, J = parse_relation(eqn, X, {P})
+
+        assert L == {
+            0:1,
+            1: -sympy.exp(P)
+        }
+        assert not M
+        assert not J
+
+    def test_free_constant(self):
+        eqn = " e_0 - mu - R*T*log(x_0/V)"
+        x_0 = Variable(index=0)
+        e_0 = Effort(index=0)
+        mu = Parameter('mu')
+        R = Parameter('R')
+        T = Parameter('T')
+        V = Parameter('V')
+
+        L, M, J = parse_relation(eqn, [x_0, e_0], {mu, R,T, V})
+
+        assert L == {1:1}
+        assert M == {0:-mu, 1: -R*T}
+        assert J == [sympy.S(1), sympy.log(x_0/V)]
+
 
 class TestGenerateCoords():
     def test_C(self):
@@ -193,6 +228,14 @@ class TestGenerateCoords():
 
         assert len(found_symbols) == 5
 
+    def test_se_coords_(self):
+        se = new('Se')
+        coords, params, subs = _make_coords(se)
+
+        assert str(coords) == "[f, e_0, f_0, e]"
+        assert not params
+        assert not subs
+
 
 class TestGenerateSystem:
 
@@ -232,8 +275,21 @@ class TestGenerateSystem:
         names = [str(x) for x in X]
         assert names == ["dx_0", "e_0", "f_0", "x_0"]
 
+    def test_se(self):
+        se = new("Se")
+        X, P, L, M, JX = _generate_atomics_system(se)
 
-class TestMerge():
+        assert str(X) == "[f, e_0, f_0, e]"
+        assert not P
+
+        for row in L.values():
+            assert row in [{0: 1, 2: 1}, {1: 1, 3: -1}]
+
+        assert not M
+        assert not JX
+
+
+class TestMerge:
     def test_merge_coords(self):
         c = new("C", value=Parameter('C'))
         c_1, p_1, subs_1 = _make_coords(c)
@@ -300,6 +356,54 @@ class TestMerge():
 
         assert str(coords) == '[dx_0, e_0, f_0, e_1, f_1, e_2, f_2, x_0, u_0]'
         assert params == {P}
+        assert L == {
+            0: {1: 1},
+            1: {0: -1, 2: 1},
+            2: {4: 1, 6: 1},
+            3: {4: 1}
+        }
+        assert M == {
+            0: {0: -P},
+            3: {1: 1, 2: -1}
+        }
+        u = coords[-1]
+        x = coords[-2]
+        e_2 = coords[3]
+        e_3 = coords[5]
+        assert J == [sympy.log(x), u*sympy.exp(e_3 / P), u*sympy.exp(e_2 / P)]
+
+
+class Test_generate_system_from:
+    def test_compound(self):
+        p1 = Parameter('C')
+        p2 = Parameter('R')
+        c = new("C", value=p1)
+        r = new("R", value=p2)
+        j = new("0")
+        model = new()
+        model.add(c, r, j)
+        # should add 4 extra coordinates
+        connect(c, j)
+        connect(r, j)
+
+        coords, params, L, M, J = generate_system_from(model)
+
+        assert len(coords) == 10
+        assert len(params) == 2
+        assert not M
+        assert not J
+        assert L == {
+            0: {1: -p1, 9: 1},  # C_1
+            1: {0: 1, 2: -1},   # C_2
+            2: {3: 1, 4: -p2},  # R_1
+            3: {5: 1, 7: -1},   # 0 Junction
+            4: {6: 1, 8: 1},    # 0 Junction
+            5: {1: -1, 5: 1},
+            6: {2: 1, 6: 1},
+            7: {3: -1, 7: 1},
+            8: {4: 1, 8: 1}
+        }
+
 
 
 def test_extract_coeffs_lin():

@@ -22,7 +22,7 @@ class Atomic(BondGraphBase, PortManager):
     """
 
     def __init__(self, metamodel, constitutive_relations,
-                 state_vars=None, params=None, output_vars=None, **kwargs):
+                 state_vars=None, params=None, outputs=None, **kwargs):
 
         self._metamodel = metamodel
         ports = kwargs.pop("ports")
@@ -31,7 +31,7 @@ class Atomic(BondGraphBase, PortManager):
         self._state_vars = state_vars
 
         self._params = params
-        self._output_vars = output_vars
+        self._output_vars = outputs
 
         self.view = Glyph(self)
         self._constitutive_relations = constitutive_relations
@@ -276,7 +276,10 @@ class EqualEffort(BondGraphBase, PortExpander):
     def constitutive_relations(self):
 
         vects = list(self._port_vectors())
-        e_0, f_0 = vects.pop()
+        try:
+            e_0, f_0 = vects.pop()
+        except IndexError:
+            raise ModelException("Model %s has no ports", self)
         partial_sum = f_0
 
         relations = []
@@ -336,7 +339,10 @@ class EqualFlow(BondGraphBase, PortExpander):
         relations = []
 
         var = list(self._port_vectors().items())
-        (e_0, f_0), port = var.pop()
+        try:
+            (e_0, f_0), port = var.pop()
+        except IndexError:
+            raise ModelException("Model %s has no ports", self)
 
         sigma_0 = port.weight
         partial_sum = sigma_0*e_0
